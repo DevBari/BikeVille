@@ -1,0 +1,6 @@
+@BikeVille_HostAddress = http://localhost:5294
+
+GET {{BikeVille_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
