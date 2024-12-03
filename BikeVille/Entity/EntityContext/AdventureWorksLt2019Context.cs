@@ -31,6 +31,7 @@ public partial class AdventureWorksLt2019Context : DbContext
     public virtual DbSet<ErrorLog> ErrorLogs { get; set; }
 
     public virtual DbSet<Product> Products { get; set; }
+    
 
     public virtual DbSet<ProductCategory> ProductCategories { get; set; }
 
@@ -47,12 +48,16 @@ public partial class AdventureWorksLt2019Context : DbContext
     public virtual DbSet<VGetAllCategory> VGetAllCategories { get; set; }
 
     public virtual DbSet<VProductAndDescription> VProductAndDescriptions { get; set; }
+   
 
     public virtual DbSet<VProductModelCatalogDescription> VProductModelCatalogDescriptions { get; set; }
 
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
+
     {
+    
+
         modelBuilder.Entity<Address>(entity =>
         {
             entity.HasKey(e => e.AddressId).HasName("PK_Address_AddressID");
