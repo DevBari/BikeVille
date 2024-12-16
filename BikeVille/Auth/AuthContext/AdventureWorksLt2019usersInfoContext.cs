@@ -1,51 +1,49 @@
-﻿using System;
-using System.Collections.Generic;
-using BikeVille.Entity.EntityContext;
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 
 namespace BikeVille.Auth.AuthContext;
 
+// Classe per la gestione del contesto del database
 public partial class AdventureWorksLt2019usersInfoContext : DbContext
 {
-    public AdventureWorksLt2019usersInfoContext()
-    {
-    }
-
+    // Costruttore che accetta le opzioni di configurazione del contesto
     public AdventureWorksLt2019usersInfoContext(DbContextOptions<AdventureWorksLt2019usersInfoContext> options)
         : base(options)
     {
     }
 
+    // Tabella virtuale che rappresenta gli utenti nel database
     public virtual DbSet<User> Users { get; set; }
 
-
+    // Configurazione del modello del database
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
-        modelBuilder.UseCollation("SQL_Latin1_General_CP1_CI_AS");
-
+        // Configurazione della tabella "User"
         modelBuilder.Entity<User>(entity =>
         {
             entity.ToTable("User");
 
-            entity.Property(e => e.UserId).HasColumnName("UserID");
-            entity.Property(e => e.EmailAddress).HasMaxLength(50);
-            entity.Property(e => e.FirstName).HasMaxLength(50);
-            entity.Property(e => e.LastName).HasMaxLength(50);
-            entity.Property(e => e.MiddleName).HasMaxLength(50);
+            // Configurazione delle proprietà della tabella "User"
+            entity.Property(e => e.UserId).HasColumnName("UserID"); // Mappa la proprietà UserId alla colonna "UserID"
+            entity.Property(e => e.EmailAddress).HasMaxLength(50);  // Limita l'email a 50 caratteri
+            entity.Property(e => e.FirstName).HasMaxLength(50);     // Limita il nome a 50 caratteri
+            entity.Property(e => e.LastName).HasMaxLength(50);      // Limita il cognome a 50 caratteri
+            entity.Property(e => e.MiddleName).HasMaxLength(50);    // Limita il secondo nome a 50 caratteri
             entity.Property(e => e.PasswordHash)
-                .HasMaxLength(128)
-                .IsUnicode(false);
+                .HasMaxLength(128)        // Limita l'hash della password a 128 caratteri
+                .IsUnicode(false);        // Disabilita i caratteri Unicode
             entity.Property(e => e.PasswordSalt)
-                .HasMaxLength(10)
-                .IsUnicode(false);
-            entity.Property(e => e.Phone).HasMaxLength(25);
+                .HasMaxLength(10)         // Limita il salt della password a 10 caratteri
+                .IsUnicode(false);        // Disabilita i caratteri Unicode
+            entity.Property(e => e.Phone).HasMaxLength(25);         // Limita il numero di telefono a 25 caratteri
             entity.Property(e => e.Role)
-                .HasMaxLength(10)
-                .IsFixedLength();
-            entity.Property(e => e.Suffix).HasMaxLength(10);
-            entity.Property(e => e.Title).HasMaxLength(8);
+                .HasMaxLength(10)         // Limita il ruolo a 10 caratteri
+                .IsFixedLength();         // Imposta una lunghezza fissa
+            entity.Property(e => e.Suffix).HasMaxLength(10);        // Limita il suffisso a 10 caratteri
+            entity.Property(e => e.Title).HasMaxLength(8);          // Limita il titolo a 8 caratteri
+            entity.Property(e => e.Rowguid).IsRequired();           // Imposta Rowguid come obbligatorio
         });
 
+        // Metodo parziale per ulteriori configurazioni personalizzate
         OnModelCreatingPartial(modelBuilder);
     }
 

@@ -1,3 +1,4 @@
+using AuthJwt.Auth;
 using BikeVille.Auth;
 using BikeVille.Auth.AuthContext;
 using BikeVille.Entity.EntityContext;
@@ -25,12 +26,6 @@ namespace BikeVille
             builder.Services.AddControllers().AddJsonOptions(o=>o.JsonSerializerOptions.ReferenceHandler=ReferenceHandler.Preserve);
             //Service Transition
             builder.Services.AddHostedService<TransitionService>();
-            builder.Services.Configure<GoogleAuthSettings>(options =>
-            {
-                options.GoogleClientId = "467980910008-a1c9tm4dg1omhet8vckq8t77nr42feea.apps.googleusercontent.com";
-                options.Issuer = "https://accounts.google.com";
-                options.Audience = "467980910008-a1c9tm4dg1omhet8vckq8t77nr42feea.apps.googleusercontent.com";
-            });
             // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
             builder.Services.AddEndpointsApiExplorer();
             builder.Services.AddSwaggerGen();
@@ -40,19 +35,10 @@ namespace BikeVille
             //cors
             builder.Services.AddCors(options =>
             {
-                options.AddPolicy("AllowSpecificOrigin", policy =>
+                options.AddPolicy("AllowAll", builder =>
                 {
-                    policy.WithOrigins("http://localhost:4200").AllowAnyMethod().AllowAnyHeader();
-                });
-            });
-
-            //Cors
-
-            builder.Services.AddCors(options =>
-            {
-                options.AddPolicy("CorsPolicy", builder =>
-                {
-                    builder.AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader();
+                    builder.AllowAnyOrigin().AllowAnyMethod()
+                           .AllowAnyHeader();
                 });
             });
 
@@ -76,22 +62,27 @@ namespace BikeVille
                     ValidIssuer = jwtSettings.Issuer,
                     ValidAudience = jwtSettings.Audience,
                     IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSettings.SecretKey)),
-                    ClockSkew = TimeSpan.Zero
+                    ClockSkew = TimeSpan.Zero,
 
                 };
             });
+            builder.Services.Configure<GoogleAuthSettings>(options =>
+                {
+                    options.GoogleClientId = "467980910008-a1c9tm4dg1omhet8vckq8t77nr42feea.apps.googleusercontent.com";
+                    options.Issuer = "https://accounts.google.com";
+                    options.Audience = "467980910008-a1c9tm4dg1omhet8vckq8t77nr42feea.apps.googleusercontent.com";
+                });
 
 
 
-            builder.Services.AddAuthorization(options =>
-            {
-                options.AddPolicy("AdminPolicy", policy => policy.RequireRole("ADMIN"));
-            });
+            //Role
+            builder.Services.AddAuthorizationBuilder().AddPolicy("AdminPolicy", policy => policy.RequireRole("ADMIN"));
 
             var app = builder.Build();
 
-            //cors
-            app.UseCors("AllowSpecificOrigin");
+            //Cors
+            app.UseCors("AllowAll");
+
             // Configure the HTTP request pipeline.
             if (app.Environment.IsDevelopment())
             {
@@ -99,10 +90,12 @@ namespace BikeVille
                 app.UseSwaggerUI();
             }
 
+
+
             app.UseHttpsRedirection();
-            
             app.UseAuthentication();
-           
+            app.UseAuthorization();
+
 
 
 

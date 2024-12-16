@@ -12,6 +12,8 @@ using BikeVille.Auth.AuthContext;
 
 namespace BikeVille.Entity.SalesControllers
 {
+
+
     [Route("[controller]")]
     [ApiController]
     public class SalesOrderHeadersController : ControllerBase
@@ -48,40 +50,82 @@ namespace BikeVille.Entity.SalesControllers
 
         // PUT: api/SalesOrderHeaders/5
         // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
-        [HttpPut("Update/{id}")]
-        public async Task<IActionResult> PutSalesOrderHeader(int id, SalesOrderHeader salesOrderHeader)
-        {
-            if (id != salesOrderHeader.SalesOrderId)
-            {
-                return BadRequest();
-            }
+        //[HttpPut("Update/{id}")]
+        //public async Task<IActionResult> PutSalesOrderHeader(int id, SalesOrderHeader salesOrderHeader)
+        //{
+        //    if (id != salesOrderHeader.SalesOrderId)
+        //    {
+        //        return BadRequest();
+        //    }
 
-            _context.Entry(salesOrderHeader).State = EntityState.Modified;
+        //    _context.Entry(salesOrderHeader).State = EntityState.Modified;
 
-            try
-            {
-                await _context.SaveChangesAsync();
-            }
-            catch (DbUpdateConcurrencyException)
-            {
-                if (!SalesOrderHeaderExists(id))
-                {
-                    return NotFound();
-                }
-                else
-                {
-                    throw;
-                }
-            }
+        //    try
+        //    {
+        //        await _context.SaveChangesAsync();
+        //    }
+        //    catch (DbUpdateConcurrencyException)
+        //    {
+        //        if (!SalesOrderHeaderExists(id))
+        //        {
+        //            return NotFound();
+        //        }
+        //        else
+        //        {
+        //            throw;
+        //        }
+        //    }
 
-            return NoContent();
-        }
+        //    return NoContent();
+        //}
 
         // POST: api/SalesOrderHeaders
         // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
         [HttpPost("Add")]
         public async Task<ActionResult<SalesOrderHeader>> PostSalesOrderHeader(SalesOrderHeaderDto salesOrderHeader)
-        { 
+        {
+
+
+            // Funzione per generare il codice casuale
+            static string GeneratePurchaseOrder()
+            {
+                Random random = new Random();
+
+                // Genera 2 lettere maiuscole casuali
+                char lettera1 = (char)random.Next('A', 'Z' + 1);
+                char lettera2 = (char)random.Next('A', 'Z' + 1);
+
+                // Genera un numero casuale a 5 cifre (tra 10000 e 99999)
+                int numero1 = random.Next(10000, 100000);
+
+                // Genera un numero casuale a 8 cifre (tra 10000000 e 99999999)
+                long numero2 = random.Next(10000000, 100000000);
+
+                // Combina le lettere e i numeri in un codice
+                string codice = $"{lettera1}{lettera2}{numero1}{numero2}";
+                return codice;
+            }
+
+            // Funzione per generare il codice casuale
+            static string GenerateSalesOrderNumber()
+            {
+                Random random = new();
+                // Genera 2 lettere maiuscole casuali
+                char lettera1 = (char)random.Next('A', 'Z' + 1);
+                char lettera2 = (char)random.Next('A', 'Z' + 1);
+
+                // Genera 5 numeri casuali
+                int numero = random.Next(10000, 100000); // Questo genera un numero tra 10000 e 99999
+
+                // Combina le lettere e i numeri in un codice
+                string codice = $"{lettera1}{lettera2}{numero}";
+                return codice;
+            }
+
+
+
+
+
             Customer customer = new(); 
 
             if(salesOrderHeader.user.Role == "CUSTOMER")
@@ -92,7 +136,7 @@ namespace BikeVille.Entity.SalesControllers
             }
             else if(salesOrderHeader.user.Role =="USER")
             {
-               User user = await _authContext.Users.FirstOrDefaultAsync(u => u.Rowguid == salesOrderHeader.user.Rowguid);
+                User user = await _authContext.Users.FirstOrDefaultAsync(u => u.Rowguid == salesOrderHeader.user.Rowguid);
                 user.Role = "CUSTOMER"; 
 
                 var Addedcustomer =new Customer()
@@ -108,7 +152,7 @@ namespace BikeVille.Entity.SalesControllers
                     Phone=null,
                     PasswordHash="",
                     PasswordSalt="",
-                    Rowguid= (Guid)salesOrderHeader.user.Rowguid,
+                    Rowguid= salesOrderHeader.user.Rowguid,
                     ModifiedDate=DateTime.Now,
 
                 };
@@ -130,20 +174,20 @@ namespace BikeVille.Entity.SalesControllers
         }
 
         // DELETE: api/SalesOrderHeaders/5
-        [HttpDelete("{id}")]
-        public async Task<IActionResult> DeleteSalesOrderHeader(int id)
-        {
-            var salesOrderHeader = await _context.SalesOrderHeaders.FindAsync(id);
-            if (salesOrderHeader == null)
-            {
-                return NotFound();
-            }
+        //[HttpDelete("{id}")]
+        //public async Task<IActionResult> DeleteSalesOrderHeader(int id)
+        //{
+        //    var salesOrderHeader = await _context.SalesOrderHeaders.FindAsync(id);
+        //    if (salesOrderHeader == null)
+        //    {
+        //        return NotFound();
+        //    }
 
-            _context.SalesOrderHeaders.Remove(salesOrderHeader);
-            await _context.SaveChangesAsync();
+        //    _context.SalesOrderHeaders.Remove(salesOrderHeader);
+        //    await _context.SaveChangesAsync();
 
-            return NoContent();
-        }
+        //    return NoContent();
+        //}
 
         private bool SalesOrderHeaderExists(int id)
         {

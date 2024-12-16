@@ -1,5 +1,4 @@
-﻿using BikeVille.Entity.EntityContext;
-
+﻿using BikeVille.Auth;
 
 namespace BikeVille.Entity
 {
@@ -7,7 +6,6 @@ namespace BikeVille.Entity
     {
         public SalesOrderHeader SalesOrderHeader { get; set; }
         public User user { get; set; }
-
         public string CompanyName { get; set; }
     }
 }

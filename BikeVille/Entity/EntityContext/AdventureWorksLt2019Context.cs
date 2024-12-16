@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using BikeVille.Auth;
 using BikeVille.Entity;
 using Microsoft.EntityFrameworkCore;
 
@@ -18,20 +17,16 @@ public partial class AdventureWorksLt2019Context : DbContext
     }
 
     public virtual DbSet<Address> Addresses { get; set; }
-  
 
     public virtual DbSet<BuildVersion> BuildVersions { get; set; }
 
     public virtual DbSet<Customer> Customers { get; set; }
-    public virtual DbSet<User> Users { get; set; }
-
 
     public virtual DbSet<CustomerAddress> CustomerAddresses { get; set; }
 
     public virtual DbSet<ErrorLog> ErrorLogs { get; set; }
 
     public virtual DbSet<Product> Products { get; set; }
-    
 
     public virtual DbSet<ProductCategory> ProductCategories { get; set; }
 
@@ -45,19 +40,11 @@ public partial class AdventureWorksLt2019Context : DbContext
 
     public virtual DbSet<SalesOrderHeader> SalesOrderHeaders { get; set; }
 
-    public virtual DbSet<VGetAllCategory> VGetAllCategories { get; set; }
 
-    public virtual DbSet<VProductAndDescription> VProductAndDescriptions { get; set; }
-   
-
-    public virtual DbSet<VProductModelCatalogDescription> VProductModelCatalogDescriptions { get; set; }
 
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
-
     {
-    
-
         modelBuilder.Entity<Address>(entity =>
         {
             entity.HasKey(e => e.AddressId).HasName("PK_Address_AddressID");
@@ -180,7 +167,6 @@ public partial class AdventureWorksLt2019Context : DbContext
                 .HasMaxLength(8)
                 .HasComment("A courtesy title. For example, Mr. or Ms.");
 
-           
         });
 
         modelBuilder.Entity<CustomerAddress>(entity =>
@@ -244,8 +230,6 @@ public partial class AdventureWorksLt2019Context : DbContext
             entity.Property(e => e.UserName)
                 .HasMaxLength(128)
                 .HasComment("The user who executed the batch in which the error occurred.");
-            modelBuilder.UseCollation("SQL_Latin1_General_CP1_CI_AS");
-           
         });
 
         modelBuilder.Entity<Product>(entity =>
@@ -437,10 +421,10 @@ public partial class AdventureWorksLt2019Context : DbContext
             entity.HasKey(e => new { e.SalesOrderId, e.SalesOrderDetailId }).HasName("PK_SalesOrderDetail_SalesOrderID_SalesOrderDetailID");
 
             entity.ToTable("SalesOrderDetail", "SalesLT", tb =>
-                {
-                    tb.HasComment("Individual products associated with a specific sales order. See SalesOrderHeader.");
-                    tb.HasTrigger("iduSalesOrderDetail");
-                });
+            {
+                tb.HasComment("Individual products associated with a specific sales order. See SalesOrderHeader.");
+                tb.HasTrigger("iduSalesOrderDetail");
+            });
 
             entity.HasIndex(e => e.Rowguid, "AK_SalesOrderDetail_rowguid").IsUnique();
 
@@ -488,10 +472,10 @@ public partial class AdventureWorksLt2019Context : DbContext
             entity.HasKey(e => e.SalesOrderId).HasName("PK_SalesOrderHeader_SalesOrderID");
 
             entity.ToTable("SalesOrderHeader", "SalesLT", tb =>
-                {
-                    tb.HasComment("General sales order information.");
-                    tb.HasTrigger("uSalesOrderHeader");
-                });
+            {
+                tb.HasComment("General sales order information.");
+                tb.HasTrigger("uSalesOrderHeader");
+            });
 
             entity.HasIndex(e => e.SalesOrderNumber, "AK_SalesOrderHeader_SalesOrderNumber").IsUnique();
 
@@ -581,67 +565,11 @@ public partial class AdventureWorksLt2019Context : DbContext
                 .HasConstraintName("FK_SalesOrderHeader_Address_ShipTo_AddressID");
         });
 
-        modelBuilder.Entity<VGetAllCategory>(entity =>
-        {
-            entity
-                .HasNoKey()
-                .ToView("vGetAllCategories", "SalesLT");
 
-            entity.Property(e => e.ParentProductCategoryName).HasMaxLength(50);
-            entity.Property(e => e.ProductCategoryId).HasColumnName("ProductCategoryID");
-            entity.Property(e => e.ProductCategoryName).HasMaxLength(50);
-        });
 
-        modelBuilder.Entity<VProductAndDescription>(entity =>
-        {
-            entity
-                .HasNoKey()
-                .ToView("vProductAndDescription", "SalesLT");
 
-            entity.Property(e => e.Culture)
-                .HasMaxLength(6)
-                .IsFixedLength();
-            entity.Property(e => e.Description).HasMaxLength(400);
-            entity.Property(e => e.Name).HasMaxLength(50);
-            entity.Property(e => e.ProductId).HasColumnName("ProductID");
-            entity.Property(e => e.ProductModel).HasMaxLength(50);
-        });
 
-        modelBuilder.Entity<VProductModelCatalogDescription>(entity =>
-        {
-            entity
-                .HasNoKey()
-                .ToView("vProductModelCatalogDescription", "SalesLT");
 
-            entity.Property(e => e.Color).HasMaxLength(256);
-            entity.Property(e => e.Copyright).HasMaxLength(30);
-            entity.Property(e => e.Crankset).HasMaxLength(256);
-            entity.Property(e => e.MaintenanceDescription).HasMaxLength(256);
-            entity.Property(e => e.Material).HasMaxLength(256);
-            entity.Property(e => e.ModifiedDate).HasColumnType("datetime");
-            entity.Property(e => e.Name).HasMaxLength(50);
-            entity.Property(e => e.NoOfYears).HasMaxLength(256);
-            entity.Property(e => e.Pedal).HasMaxLength(256);
-            entity.Property(e => e.PictureAngle).HasMaxLength(256);
-            entity.Property(e => e.PictureSize).HasMaxLength(256);
-            entity.Property(e => e.ProductLine).HasMaxLength(256);
-            entity.Property(e => e.ProductModelId)
-                .ValueGeneratedOnAdd()
-                .HasColumnName("ProductModelID");
-            entity.Property(e => e.ProductPhotoId)
-                .HasMaxLength(256)
-                .HasColumnName("ProductPhotoID");
-            entity.Property(e => e.ProductUrl)
-                .HasMaxLength(256)
-                .HasColumnName("ProductURL");
-            entity.Property(e => e.RiderExperience).HasMaxLength(1024);
-            entity.Property(e => e.Rowguid).HasColumnName("rowguid");
-            entity.Property(e => e.Saddle).HasMaxLength(256);
-            entity.Property(e => e.Style).HasMaxLength(256);
-            entity.Property(e => e.WarrantyDescription).HasMaxLength(256);
-            entity.Property(e => e.WarrantyPeriod).HasMaxLength(256);
-            entity.Property(e => e.Wheel).HasMaxLength(256);
-        });
 
         OnModelCreatingPartial(modelBuilder);
     }

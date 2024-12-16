@@ -16,7 +16,7 @@ public partial class SalesOrderHeader
     /// <summary>
     /// Incremental number to track changes to the sales order over time.
     /// </summary>
-    public byte RevisionNumber { get; set; }
+    public byte RevisionNumber { get; set; } = 2;
 
     /// <summary>
     /// Dates the sales order was created.
@@ -26,7 +26,7 @@ public partial class SalesOrderHeader
     /// <summary>
     /// Date the order is due to the customer.
     /// </summary>
-    public DateTime DueDate { get; set; }
+    public DateTime? DueDate { get; set; }
 
     /// <summary>
     /// Date the order was shipped to the customer.
@@ -36,12 +36,12 @@ public partial class SalesOrderHeader
     /// <summary>
     /// Order current status. 1 = In process; 2 = Approved; 3 = Backordered; 4 = Rejected; 5 = Shipped; 6 = Cancelled
     /// </summary>
-    public byte Status { get; set; }
+    public byte Status { get; set; } = 5;
 
     /// <summary>
     /// 0 = Order placed by sales person. 1 = Order placed online by customer.
     /// </summary>
-    public bool OnlineOrderFlag { get; set; }
+    public bool OnlineOrderFlag { get; set; } = true;
 
     /// <summary>
     /// Unique sales order identification number.
