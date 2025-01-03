@@ -3,7 +3,8 @@
     using BikeVille.Entity;
     public class SalesOrderHeaderRequest
     {
-        public int CustomerId { get; set; }
+        public int? CustomerId { get; set; }
+        public int? UserId { get; set; }
         public string shipMethod { get; set; }
         public string SalesOrderNumber { get; set; }
         public byte RevisionNumber { get; set; }

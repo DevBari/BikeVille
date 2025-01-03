@@ -13,6 +13,7 @@ using System.Security.Cryptography;
 using BikeVille.CriptingDecripting;
 using System.Text;
 using Google.Apis.Auth;
+using BikeVille.Entity;
 
 namespace BikeVille.Auth.AuthController
 {
@@ -22,12 +23,15 @@ namespace BikeVille.Auth.AuthController
     public class UsersController : ControllerBase
     {
         private readonly AdventureWorksLt2019usersInfoContext _authContext;
+        private readonly AdventureWorksLt2019Context _context;
         private const string CLIENT_ID = "467980910008-a1c9tm4dg1omhet8vckq8t77nr42feea.apps.googleusercontent.com"; // Inserisci il tuo CLIENT_ID di Google
 
         // Costruttore che inietta il contesto del database
-        public UsersController(AdventureWorksLt2019usersInfoContext authContext)
+        public UsersController(AdventureWorksLt2019usersInfoContext authContext, AdventureWorksLt2019Context context)
         {
             _authContext = authContext;
+            _context = context;
+
         }
 
         // GET: api/Users
@@ -153,9 +157,26 @@ namespace BikeVille.Auth.AuthController
                 Role = userDto.Role,
                 Rowguid = Guid.NewGuid(), // Crea un nuovo identificatore GUID
             };
-
             _authContext.Users.Add(user); // Aggiunge il nuovo utente al contesto
             await _authContext.SaveChangesAsync();
+            var customer = new Customer()
+            {
+                NameStyle = true, // Impostazione del formato del nome, ad esempio western style
+                FirstName = userDto.FirstName,
+                MiddleName = userDto.MiddleName,
+                LastName = userDto.LastName,
+                Suffix = userDto.Suffix,
+                EmailAddress = userDto.EmailAddress,
+                Phone = userDto.Phone,
+                PasswordHash = passHashSalt.Key, // Usa lo stesso hash della password
+                PasswordSalt = passHashSalt.Value, // Usa lo stesso salt della password
+                Rowguid = Guid.NewGuid(), // GUID unico per il customer
+                ModifiedDate = DateTime.UtcNow, // Data di ultima modifica
+            };
+
+            _context.Customers.Add(customer);
+            await _context.SaveChangesAsync();
+
 
             return CreatedAtAction("GetUser", new { id = user.UserId }, user); // Restituisce l'utente creato con il codice 201
         }

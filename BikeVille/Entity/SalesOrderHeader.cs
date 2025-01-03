@@ -12,6 +12,7 @@ public partial class SalesOrderHeader
     /// Primary key.
     /// </summary>
     public int SalesOrderId { get; set; }
+    public int UserId { get; set; }
 
     /// <summary>
     /// Incremental number to track changes to the sales order over time.

@@ -137,19 +137,19 @@ namespace BikeVille.Entity.SalesControllers
 
         // POST: api/SalesOrderHeaders
         [HttpPost("Add")]
-
         public async Task<IActionResult> CreateSalesOrderHeader(SalesOrderHeaderRequest salesOrderHeaderRequest)
         {
-            // Verifica i dati prima di tentare di salvarli
-            //   if (string.IsNullOrEmpty(salesOrderHeaderRequest.AccountNumber) || string.IsNullOrEmpty(salesOrderHeaderRequest.PurchaseOrderNumber))
-            //  {
-            //  return BadRequest("AccountNumber and PurchaseOrderNumber are required.");
-            //  }
+            // Validazione condizionale
+            if (salesOrderHeaderRequest.CustomerId == null && salesOrderHeaderRequest.UserId == null)
+            {
+                return BadRequest("Either CustomerId or UserId must be provided.");
+            }
 
             // Procedi con la creazione dell'ordine
             var salesOrderHeader = new SalesOrderHeader
             {
-                CustomerId = salesOrderHeaderRequest.CustomerId,
+                CustomerId = salesOrderHeaderRequest.CustomerId ?? 0,
+                UserId = salesOrderHeaderRequest.UserId ?? 0,
                 SalesOrderNumber = salesOrderHeaderRequest.SalesOrderNumber,
                 RevisionNumber = salesOrderHeaderRequest.RevisionNumber,
                 Status = salesOrderHeaderRequest.Status,
@@ -166,7 +166,6 @@ namespace BikeVille.Entity.SalesControllers
                 CreditCardApprovalCode = salesOrderHeaderRequest.CreditCardApprovalCode,
                 Comment = salesOrderHeaderRequest.Comment,
                 ShipMethod = salesOrderHeaderRequest.shipMethod,
-                // Aggiunti nuovi campi
                 PurchaseOrderNumber = salesOrderHeaderRequest.PurchaseOrderNumber,
                 AccountNumber = salesOrderHeaderRequest.AccountNumber
             };
@@ -176,6 +175,23 @@ namespace BikeVille.Entity.SalesControllers
                 // Aggiungi l'ordine al contesto e salva
                 _context.SalesOrderHeaders.Add(salesOrderHeader);
                 await _context.SaveChangesAsync();
+
+                // Cambia il ruolo dell'utente se necessario
+                if (salesOrderHeaderRequest.UserId != null)
+                {
+                    var user = await _authContext.Users.FindAsync(salesOrderHeaderRequest.UserId);
+                    if (user != null && user.Role == "USER      ")
+                    {
+                        user.Role = "CUSTOMER"; // Modifica direttamente il ruolo
+                        Console.WriteLine($"State before SaveChanges: {_authContext.Entry(user).State}");
+                        _authContext.Entry(user).State = EntityState.Modified; // Forza il tracciamento
+                        var result = await _authContext.SaveChangesAsync();
+                        Console.WriteLine($"Numero di record aggiornati: {result}");
+                        await _authContext.SaveChangesAsync(); // Salva le modifiche
+                        Console.WriteLine($"Role updated successfully for User {user.EmailAddress}");
+                        Console.WriteLine($"State after SaveChanges: {_authContext.Entry(user).State}");
+                    }
+                }
             }
             catch (DbUpdateException ex)
             {
@@ -186,6 +202,7 @@ namespace BikeVille.Entity.SalesControllers
 
             return CreatedAtAction(nameof(GetSalesOrderHeader), new { id = salesOrderHeader.SalesOrderId }, salesOrderHeader);
         }
+
 
         private bool SalesOrderHeaderExists(int id)
         {
