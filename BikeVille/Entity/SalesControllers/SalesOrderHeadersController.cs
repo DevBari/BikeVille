@@ -5,33 +5,120 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using BikeVille.Entity;
 using BikeVille.Entity.EntityContext;
+
 using BikeVille.Auth;
 using BikeVille.Auth.AuthContext;
+using Microsoft.Extensions.Logging;
 
 namespace BikeVille.Entity.SalesControllers
 {
-
-
     [Route("[controller]")]
     [ApiController]
     public class SalesOrderHeadersController : ControllerBase
     {
         private readonly AdventureWorksLt2019Context _context;
         private readonly AdventureWorksLt2019usersInfoContext _authContext;
+        private readonly ILogger<SalesOrderHeadersController> _logger;
+        private object shipMethod;
 
-        public SalesOrderHeadersController(AdventureWorksLt2019Context context,AdventureWorksLt2019usersInfoContext authContext)
+        public SalesOrderHeadersController(AdventureWorksLt2019Context context, AdventureWorksLt2019usersInfoContext authContext, ILogger<SalesOrderHeadersController> logger)
         {
             _context = context;
             _authContext = authContext;
+            _logger = logger;
         }
 
         // GET: api/SalesOrderHeaders
         [HttpGet("Index")]
         public async Task<ActionResult<IEnumerable<SalesOrderHeader>>> GetSalesOrderHeaders()
         {
-            return await _context.SalesOrderHeaders.ToListAsync();
+            var headers = await _context.SalesOrderHeaders
+    .Select(h => new SalesOrderHeader
+    {
+        SalesOrderId = h.SalesOrderId,
+        RevisionNumber = (byte)h.RevisionNumber, // Cast esplicito
+        Status = (byte)h.Status, // Cast esplicito
+        OrderDate = h.OrderDate,
+        DueDate = h.DueDate,
+        ShipDate = h.ShipDate,
+        OnlineOrderFlag = h.OnlineOrderFlag,
+        SalesOrderNumber = h.SalesOrderNumber,
+        SubTotal = h.SubTotal,
+        TaxAmt = h.TaxAmt,
+        Freight = h.Freight,
+        TotalDue = h.TotalDue,
+        BillToAddressId = h.BillToAddressId,
+        CreditCardApprovalCode = h.CreditCardApprovalCode,
+        Customer = new Customer
+        {
+            CustomerId = h.Customer.CustomerId,
+            NameStyle = h.Customer.NameStyle,
+            Title = h.Customer.Title,
+            FirstName = h.Customer.FirstName,
+            MiddleName = h.Customer.MiddleName,
+            LastName = h.Customer.LastName,
+            CompanyName = h.Customer.CompanyName,
+            SalesPerson = h.Customer.SalesPerson,
+            ModifiedDate = h.Customer.ModifiedDate
+        },
+        SalesOrderDetails = h.SalesOrderDetails.Select(d => new SalesOrderDetail
+        {
+            SalesOrderId = d.SalesOrderId,
+            SalesOrderDetailId = d.SalesOrderDetailId,
+            OrderQty = d.OrderQty,
+            ProductId = d.ProductId,
+            UnitPrice = d.UnitPrice,
+            UnitPriceDiscount = d.UnitPriceDiscount,
+            LineTotal = d.LineTotal,
+            Product = new Product
+            {
+                ProductId = d.Product.ProductId,
+                Name = d.Product.Name,
+                ProductNumber = d.Product.ProductNumber,
+                Color = d.Product.Color,
+                StandardCost = d.Product.StandardCost,
+                ListPrice = d.Product.ListPrice,
+                Size = d.Product.Size,
+                Weight = d.Product.Weight,
+                SellStartDate = d.Product.SellStartDate,
+                DiscontinuedDate = d.Product.DiscontinuedDate
+            }
+        }).ToList(),
+        ShipToAddressId = h.ShipToAddressId,
+        BillToAddress = h.BillToAddress != null
+            ? new Address
+            {
+                AddressId = h.BillToAddress.AddressId,
+                AddressLine1 = h.BillToAddress.AddressLine1,
+                AddressLine2 = h.BillToAddress.AddressLine2,
+                City = h.BillToAddress.City,
+                StateProvince = h.BillToAddress.StateProvince,
+                CountryRegion = h.BillToAddress.CountryRegion,
+                PostalCode = h.BillToAddress.PostalCode,
+                ModifiedDate = h.BillToAddress.ModifiedDate
+            }
+            : null,
+        ShipToAddress = h.ShipToAddress != null
+            ? new Address
+            {
+                AddressId = h.ShipToAddress.AddressId,
+                AddressLine1 = h.ShipToAddress.AddressLine1,
+                AddressLine2 = h.ShipToAddress.AddressLine2,
+                City = h.ShipToAddress.City,
+                StateProvince = h.ShipToAddress.StateProvince,
+                CountryRegion = h.ShipToAddress.CountryRegion,
+                PostalCode = h.ShipToAddress.PostalCode,
+                ModifiedDate = h.ShipToAddress.ModifiedDate
+            }
+            : null,
+        Comment = h.Comment,
+        Rowguid = h.Rowguid,
+        ModifiedDate = h.ModifiedDate
+    })
+    .ToListAsync();
+
+            return headers;
         }
 
         // GET: api/SalesOrderHeaders/5
@@ -48,146 +135,57 @@ namespace BikeVille.Entity.SalesControllers
             return salesOrderHeader;
         }
 
-        // PUT: api/SalesOrderHeaders/5
-        // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
-        //[HttpPut("Update/{id}")]
-        //public async Task<IActionResult> PutSalesOrderHeader(int id, SalesOrderHeader salesOrderHeader)
-        //{
-        //    if (id != salesOrderHeader.SalesOrderId)
-        //    {
-        //        return BadRequest();
-        //    }
-
-        //    _context.Entry(salesOrderHeader).State = EntityState.Modified;
-
-        //    try
-        //    {
-        //        await _context.SaveChangesAsync();
-        //    }
-        //    catch (DbUpdateConcurrencyException)
-        //    {
-        //        if (!SalesOrderHeaderExists(id))
-        //        {
-        //            return NotFound();
-        //        }
-        //        else
-        //        {
-        //            throw;
-        //        }
-        //    }
-
-        //    return NoContent();
-        //}
-
         // POST: api/SalesOrderHeaders
-        // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
         [HttpPost("Add")]
-        public async Task<ActionResult<SalesOrderHeader>> PostSalesOrderHeader(SalesOrderHeaderDto salesOrderHeader)
+
+        public async Task<IActionResult> CreateSalesOrderHeader(SalesOrderHeaderRequest salesOrderHeaderRequest)
         {
+            // Verifica i dati prima di tentare di salvarli
+            //   if (string.IsNullOrEmpty(salesOrderHeaderRequest.AccountNumber) || string.IsNullOrEmpty(salesOrderHeaderRequest.PurchaseOrderNumber))
+            //  {
+            //  return BadRequest("AccountNumber and PurchaseOrderNumber are required.");
+            //  }
 
-
-            // Funzione per generare il codice casuale
-            static string GeneratePurchaseOrder()
+            // Procedi con la creazione dell'ordine
+            var salesOrderHeader = new SalesOrderHeader
             {
-                Random random = new Random();
+                CustomerId = salesOrderHeaderRequest.CustomerId,
+                SalesOrderNumber = salesOrderHeaderRequest.SalesOrderNumber,
+                RevisionNumber = salesOrderHeaderRequest.RevisionNumber,
+                Status = salesOrderHeaderRequest.Status,
+                OrderDate = salesOrderHeaderRequest.OrderDate,
+                DueDate = salesOrderHeaderRequest.DueDate,
+                ShipDate = salesOrderHeaderRequest.ShipDate,
+                OnlineOrderFlag = salesOrderHeaderRequest.OnlineOrderFlag,
+                SubTotal = salesOrderHeaderRequest.SubTotal,
+                TaxAmt = salesOrderHeaderRequest.TaxAmt,
+                Freight = salesOrderHeaderRequest.Freight,
+                TotalDue = salesOrderHeaderRequest.TotalDue,
+                BillToAddressId = salesOrderHeaderRequest.BillToAddressId,
+                ShipToAddressId = salesOrderHeaderRequest.ShipToAddressId,
+                CreditCardApprovalCode = salesOrderHeaderRequest.CreditCardApprovalCode,
+                Comment = salesOrderHeaderRequest.Comment,
+                ShipMethod = salesOrderHeaderRequest.shipMethod,
+                // Aggiunti nuovi campi
+                PurchaseOrderNumber = salesOrderHeaderRequest.PurchaseOrderNumber,
+                AccountNumber = salesOrderHeaderRequest.AccountNumber
+            };
 
-                // Genera 2 lettere maiuscole casuali
-                char lettera1 = (char)random.Next('A', 'Z' + 1);
-                char lettera2 = (char)random.Next('A', 'Z' + 1);
-
-                // Genera un numero casuale a 5 cifre (tra 10000 e 99999)
-                int numero1 = random.Next(10000, 100000);
-
-                // Genera un numero casuale a 8 cifre (tra 10000000 e 99999999)
-                long numero2 = random.Next(10000000, 100000000);
-
-                // Combina le lettere e i numeri in un codice
-                string codice = $"{lettera1}{lettera2}{numero1}{numero2}";
-                return codice;
-            }
-
-            // Funzione per generare il codice casuale
-            static string GenerateSalesOrderNumber()
+            try
             {
-                Random random = new();
-                // Genera 2 lettere maiuscole casuali
-                char lettera1 = (char)random.Next('A', 'Z' + 1);
-                char lettera2 = (char)random.Next('A', 'Z' + 1);
-
-                // Genera 5 numeri casuali
-                int numero = random.Next(10000, 100000); // Questo genera un numero tra 10000 e 99999
-
-                // Combina le lettere e i numeri in un codice
-                string codice = $"{lettera1}{lettera2}{numero}";
-                return codice;
-            }
-
-
-
-
-
-            Customer customer = new(); 
-
-            if(salesOrderHeader.user.Role == "CUSTOMER")
-            {
-                customer = await _context.Customers.FirstOrDefaultAsync(c=>c.Rowguid== salesOrderHeader.user.Rowguid);
-                salesOrderHeader.SalesOrderHeader.CustomerId = customer.CustomerId;
-
-            }
-            else if(salesOrderHeader.user.Role =="USER")
-            {
-                User user = await _authContext.Users.FirstOrDefaultAsync(u => u.Rowguid == salesOrderHeader.user.Rowguid);
-                user.Role = "CUSTOMER"; 
-
-                var Addedcustomer =new Customer()
-                {
-                    NameStyle =false,
-                    Title= salesOrderHeader.user.Title,
-                    FirstName= salesOrderHeader.user.FirstName,
-                    LastName= salesOrderHeader.user.LastName,
-                    Suffix= salesOrderHeader.user.Suffix,
-                    CompanyName= salesOrderHeader.CompanyName,
-                    SalesPerson=null,
-                    EmailAddress=null,
-                    Phone=null,
-                    PasswordHash="",
-                    PasswordSalt="",
-                    Rowguid= salesOrderHeader.user.Rowguid,
-                    ModifiedDate=DateTime.Now,
-
-                };
-
-
-                _context.Customers.Add(Addedcustomer);
+                // Aggiungi l'ordine al contesto e salva
+                _context.SalesOrderHeaders.Add(salesOrderHeader);
                 await _context.SaveChangesAsync();
-                await _authContext.SaveChangesAsync();
-
-                customer = await _context.Customers.FirstOrDefaultAsync(c=>c.Rowguid== salesOrderHeader.user.Rowguid);
-                salesOrderHeader.SalesOrderHeader.CustomerId = customer.CustomerId;
+            }
+            catch (DbUpdateException ex)
+            {
+                // Logga l'errore e mostra un messaggio informativo
+                Console.WriteLine($"Error saving order: {ex.InnerException?.Message}");
+                return StatusCode(500, "An error occurred while saving the order.");
             }
 
-
-            _context.SalesOrderHeaders.Add(salesOrderHeader.SalesOrderHeader);
-            await _context.SaveChangesAsync();
-
-            return CreatedAtAction("GetSalesOrderHeader", new { id = salesOrderHeader.SalesOrderHeader.SalesOrderId }, salesOrderHeader);
+            return CreatedAtAction(nameof(GetSalesOrderHeader), new { id = salesOrderHeader.SalesOrderId }, salesOrderHeader);
         }
-
-        // DELETE: api/SalesOrderHeaders/5
-        //[HttpDelete("{id}")]
-        //public async Task<IActionResult> DeleteSalesOrderHeader(int id)
-        //{
-        //    var salesOrderHeader = await _context.SalesOrderHeaders.FindAsync(id);
-        //    if (salesOrderHeader == null)
-        //    {
-        //        return NotFound();
-        //    }
-
-        //    _context.SalesOrderHeaders.Remove(salesOrderHeader);
-        //    await _context.SaveChangesAsync();
-
-        //    return NoContent();
-        //}
 
         private bool SalesOrderHeaderExists(int id)
         {

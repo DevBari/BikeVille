@@ -4,7 +4,6 @@ using System;
 using System.Collections.Generic;
 using System.Security.Cryptography;
 
-namespace BikeVille.Auth;
 
 // Classe che rappresenta l'utente all'interno dell'applicazione
 public partial class User

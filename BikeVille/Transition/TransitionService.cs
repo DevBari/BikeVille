@@ -35,13 +35,13 @@ namespace BikeVille.Transition
                 var context = scope.ServiceProvider.GetRequiredService<AdventureWorksLt2019Context>();
                 if (_configuration.GetValue<string>("Transition") == "False")
                 {
-                  // Avvia la transizione dei dati
-                  await TransitionUserCreation(authContext, context);
-                   
-                  await context.Database.ExecuteSqlRawAsync(
-                       "UPDATE [SalesLT].[Customer] SET EmailAddress = NULL, Phone = NULL, PasswordHash ='', PasswordSalt ='' WHERE CustomerID IS NOT NULL"
-                  );
-                    
+                    // Avvia la transizione dei dati
+                    await TransitionUserCreation(authContext, context);
+
+                    await context.Database.ExecuteSqlRawAsync(
+                         "UPDATE [SalesLT].[Customer] SET EmailAddress = NULL, Phone = NULL, PasswordHash ='', PasswordSalt ='' WHERE CustomerID IS NOT NULL"
+                    );
+
                 }
             }
         }
@@ -65,24 +65,24 @@ namespace BikeVille.Transition
                     Suffix = c.Suffix,
                     EmailAddress = c.EmailAddress,
                     Phone = c.Phone,
-                    PasswordHash = c.PasswordHash,
-                    PasswordSalt = c.PasswordSalt,
+                    PasswordHash = c.PasswordHash ?? string.Empty,
+                    PasswordSalt = c.PasswordSalt ?? string.Empty,
                     Role = "CUSTOMER",
                     Rowguid = c.Rowguid,
                 };
 
                 authContext.Users.Add(user);
- 
+
                 await authContext.SaveChangesAsync();
-                
+
             }
-            
+
 
 
             _logger.LogInformation("Transition completed.");
         }
 
-        
+
 
     }
 }
