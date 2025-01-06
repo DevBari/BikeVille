@@ -87,6 +87,7 @@ namespace BikeVille.Auth.AuthController
 
         // PUT: api/Users/5
         // Aggiorna i dettagli di un utente specificato dall'ID
+       
         [HttpPut("Update/{id}")]
         public async Task<IActionResult> PutUser(int id, User user)
         {
@@ -95,15 +96,51 @@ namespace BikeVille.Auth.AuthController
                 return BadRequest(); // Se l'ID non corrisponde, restituisce un errore
             }
 
-            _authContext.Entry(user).State = EntityState.Modified;
+            // Trova l'utente nel contesto _authContext
+            var existingUser = await _authContext.Users.FindAsync(id);
+            if (existingUser == null)
+            {
+                return NotFound(); // Se l'utente non esiste, restituisce 404
+            }
+
+            // Trova il cliente corrispondente alla UserId
+            var customer = await _context.Customers.FirstOrDefaultAsync(c => c.UserID == id);
+            if (customer == null)
+            {
+                return NotFound(); // Se il cliente non esiste, restituisce 404
+            }
+
+            // Aggiorna i dati dell'utente
+            existingUser.FirstName = user.FirstName;
+            existingUser.MiddleName = user.MiddleName;
+            existingUser.LastName = user.LastName;
+            existingUser.Suffix = user.Suffix;
+            existingUser.EmailAddress = user.EmailAddress;
+            existingUser.Phone = user.Phone;
+            existingUser.Role = user.Role;
+
+            // Aggiorna anche il cliente con i dati dell'utente
+            customer.Title = user.Title; // Aggiorna il titolo
+            customer.FirstName = user.FirstName;
+            customer.MiddleName = user.MiddleName;
+            customer.LastName = user.LastName;
+            customer.Suffix = user.Suffix;
+            customer.EmailAddress = user.EmailAddress; // Aggiorna l'email
+            customer.Phone = user.Phone;
+
+            // Marca l'utente e il cliente come modificati
+            _authContext.Entry(existingUser).State = EntityState.Modified;
+            _context.Entry(customer).State = EntityState.Modified;
 
             try
             {
+                // Salva le modifiche nei due contesti
                 await _authContext.SaveChangesAsync();
+                await _context.SaveChangesAsync();
             }
             catch (DbUpdateConcurrencyException)
             {
-                if (!UserExists(id))
+                if (!UserExistsU(id))
                 {
                     return NotFound(); // Se l'utente non esiste, restituisce 404
                 }
@@ -115,6 +152,13 @@ namespace BikeVille.Auth.AuthController
 
             return NoContent(); // Restituisce una risposta vuota di successo
         }
+
+        // Metodo privato per verificare se l'utente esiste
+        private bool UserExistsU(int id)
+        {
+            return _authContext.Users.Any(e => e.UserId == id);
+        }
+
 
         // PUT: api/Users/UpdatePass
         // Permette di aggiornare la password di un utente
@@ -168,10 +212,11 @@ namespace BikeVille.Auth.AuthController
                 Suffix = userDto.Suffix,
                 EmailAddress = userDto.EmailAddress,
                 Phone = userDto.Phone,
-                PasswordHash = passHashSalt.Key, // Usa lo stesso hash della password
-                PasswordSalt = passHashSalt.Value, // Usa lo stesso salt della password
+                PasswordHash = "", // Usa lo stesso hash della password
+                PasswordSalt = "", // Usa lo stesso salt della password
                 Rowguid = Guid.NewGuid(), // GUID unico per il customer
                 ModifiedDate = DateTime.UtcNow, // Data di ultima modifica
+                UserID = user.UserId
             };
 
             _context.Customers.Add(customer);
@@ -186,14 +231,23 @@ namespace BikeVille.Auth.AuthController
         [HttpDelete("Delete/{id}")]
         public async Task<IActionResult> DeleteUser(int id)
         {
+            // Trova l'utente con il relativo UserID
             var user = await _authContext.Users.FindAsync(id);
             if (user == null)
             {
                 return NotFound(); // Se l'utente non esiste, restituisce 404
             }
 
+            // Trova il cliente associato all'utente tramite UserID
+            var customer = await _context.Customers.FirstOrDefaultAsync(c => c.UserID == id);
+            if (customer != null)
+            {
+                _context.Customers.Remove(customer); // Rimuove il cliente associato
+            }
+
             _authContext.Users.Remove(user); // Rimuove l'utente dal contesto
-            await _authContext.SaveChangesAsync();
+            await _authContext.SaveChangesAsync(); // Salva le modifiche nella tabella Users
+            await _context.SaveChangesAsync(); // Salva le modifiche nella tabella Customers
 
             return NoContent(); // Restituisce una risposta vuota di successo
         }
@@ -203,6 +257,7 @@ namespace BikeVille.Auth.AuthController
         {
             return _authContext.Users.Any(e => e.UserId == id);
         }
+
 
 
         [HttpPost("registerGoogleUser")]

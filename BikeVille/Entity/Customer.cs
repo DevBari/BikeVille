@@ -83,6 +83,7 @@ public partial class Customer
     /// Date and time the record was last updated.
     /// </summary>
     public DateTime ModifiedDate { get; set; }
+    public int UserID { get; set; }
 
     public virtual ICollection<CustomerAddress> CustomerAddresses { get; set; } = new List<CustomerAddress>();
 
