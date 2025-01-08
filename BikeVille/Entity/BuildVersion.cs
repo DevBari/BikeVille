@@ -11,7 +11,7 @@ public partial class BuildVersion
     /// <summary>
     /// Primary key for BuildVersion records.
     /// </summary>
-    public byte SystemInformationId { get; set; }
+    public int SystemInformationId { get; set; }
 
     /// <summary>
     /// Version number of the database in 9.yy.mm.dd.00 format.

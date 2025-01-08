@@ -176,6 +176,24 @@ namespace BikeVille.Entity.SalesControllers
                 _context.SalesOrderHeaders.Add(salesOrderHeader);
                 await _context.SaveChangesAsync();
 
+
+                foreach (var detail in salesOrderHeaderRequest.SalesOrderDetails)
+                {
+                    var salesOrderDetail = new SalesOrderDetail
+                    {
+                        SalesOrderId = salesOrderHeader.SalesOrderId,
+                        OrderQty = (short)detail.OrderQty,
+                        ProductId = detail.ProductId,
+                        UnitPrice = detail.UnitPrice,
+                        UnitPriceDiscount = detail.UnitPriceDiscount,
+                        LineTotal = detail.OrderQty * detail.UnitPrice * (1 - detail.UnitPriceDiscount),
+
+                    };
+                    _context.SalesOrderDetails.Add(salesOrderDetail);
+                }
+
+                await _context.SaveChangesAsync();
+
                 // Cambia il ruolo dell'utente se necessario
                 if (salesOrderHeaderRequest.UserId != null)
                 {
@@ -200,13 +218,7 @@ namespace BikeVille.Entity.SalesControllers
                 return StatusCode(500, "An error occurred while saving the order.");
             }
 
-            return CreatedAtAction(nameof(GetSalesOrderHeader), new { id = salesOrderHeader.SalesOrderId }, salesOrderHeader);
-        }
-
-
-        private bool SalesOrderHeaderExists(int id)
-        {
-            return _context.SalesOrderHeaders.Any(e => e.SalesOrderId == id);
+            return CreatedAtAction("GetSalesOrderHeader", new { id = salesOrderHeader.SalesOrderId }, salesOrderHeader);
         }
     }
 }

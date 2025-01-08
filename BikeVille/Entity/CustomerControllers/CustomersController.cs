@@ -89,37 +89,6 @@ namespace BikeVille.Entity.CustomerControllers
             return NoContent();  // Restituisce un 204 No Content se l'aggiornamento è riuscito
         }
 
-        // POST: api/Customers/Add
-        // Aggiunge un nuovo cliente al database
-        [HttpPost("Add")]
-        public async Task<ActionResult<Customer>> PostCustomer(Customer customer)
-        {
-            _context.Customers.Add(customer);  // Aggiunge il cliente al contesto
-            await _context.SaveChangesAsync();  // Salva le modifiche nel database
-
-            // Restituisce una risposta con il cliente creato, con un link per visualizzarlo
-            return CreatedAtAction("GetCustomer", new { id = customer.CustomerId }, customer);
-        }
-
-        // DELETE: api/Customers/5
-        // Elimina un cliente specifico in base al suo ID
-        [HttpDelete("Delete/{id}")]
-        public async Task<IActionResult> DeleteCustomer(int id)
-        {
-            var customer = await _context.Customers.FindAsync(id);  // Cerca il cliente nel database
-
-            // Se il cliente non esiste, restituisce 404
-            if (customer == null)
-            {
-                return NotFound();
-            }
-
-            _context.Customers.Remove(customer);  // Rimuove il cliente dal contesto
-            await _context.SaveChangesAsync();  // Salva le modifiche nel database
-
-            return NoContent();  // Restituisce una risposta senza contenuto (204 No Content)
-        }
-
         // Metodo privato che verifica se un cliente con l'ID specificato esiste nel database
         private bool CustomerExists(int id)
         {
