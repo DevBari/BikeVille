@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using BikeVille.Entity;
 using BikeVille.Entity.EntityContext;
+using BikeVille.Auth.AuthContext;
 
 namespace BikeVille.Entity.CustomerControllers
 {
@@ -17,14 +18,19 @@ namespace BikeVille.Entity.CustomerControllers
     {
         private readonly AdventureWorksLt2019Context _context;
 
+        private readonly AdventureWorksLt2019usersInfoContext _authContext;
+
         // Costruttore che inizializza il contesto del database
-        public CustomersController(AdventureWorksLt2019Context context)
+        public CustomersController(AdventureWorksLt2019Context context, AdventureWorksLt2019usersInfoContext authContext)
         {
             _context = context;
+            _authContext = authContext;
+
         }
 
         // GET: api/Customers
         // Recupera tutti i clienti con i relativi ordini e indirizzi
+        
         [HttpGet("Index")]
         public async Task<ActionResult<IEnumerable<Customer>>> GetCustomers()
         {
@@ -35,6 +41,9 @@ namespace BikeVille.Entity.CustomerControllers
                 .ThenInclude(ca => ca.Address)  // Include gli indirizzi fisici
                 .ToListAsync();
         }
+
+
+
 
         // GET: api/Customers/5
         // Recupera un cliente specifico tramite il suo ID, includendo gli ordini e gli indirizzi
@@ -87,6 +96,52 @@ namespace BikeVille.Entity.CustomerControllers
             }
 
             return NoContent();  // Restituisce un 204 No Content se l'aggiornamento è riuscito
+        }
+        [HttpDelete("Delete/{id}")]
+        
+public async Task<IActionResult> DeleteUser(int id)
+        {
+            var user = await _authContext.Users.FindAsync(id);
+            if (user == null)
+            {
+                return NotFound();
+            }
+
+            var customer = await _context.Customers
+                .Include(c => c.CustomerAddresses) // Include gli indirizzi associati al cliente
+                .FirstOrDefaultAsync(c => c.UserID == id);
+
+            using var transaction = await _context.Database.BeginTransactionAsync();
+            try
+            {
+                if (customer != null)
+                {
+                    // Elimina gli indirizzi del cliente, se presenti
+                    if (customer.CustomerAddresses != null && customer.CustomerAddresses.Any())
+                    {
+                        _context.CustomerAddresses.RemoveRange(customer.CustomerAddresses);
+                    }
+
+                    // Elimina il cliente
+                    _context.Customers.Remove(customer);
+                    await _context.SaveChangesAsync();
+                }
+
+                // Elimina l'utente
+                _authContext.Users.Remove(user);
+                await _authContext.SaveChangesAsync();
+
+                await transaction.CommitAsync();
+            }
+            catch (Exception ex)
+            {
+                await transaction.RollbackAsync();
+                // Log dell'errore (se hai configurato un logger)
+                Console.Error.WriteLine($"Error while deleting user with ID {id}: {ex.Message}");
+                throw;
+            }
+
+            return NoContent();
         }
 
         // Metodo privato che verifica se un cliente con l'ID specificato esiste nel database

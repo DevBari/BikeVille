@@ -12,7 +12,7 @@ public partial class CustomerAddress
     /// Primary key. Foreign key to Customer.CustomerID.
     /// </summary>
     public int CustomerId { get; set; }
-
+    public int UserID { get; set; }
     /// <summary>
     /// Primary key. Foreign key to Address.AddressID.
     /// </summary>
