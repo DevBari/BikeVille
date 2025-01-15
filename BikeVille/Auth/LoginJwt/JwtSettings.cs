@@ -1,5 +1,4 @@
-﻿namespace AuthJwt.Auth
-{
+﻿namespace LoginJwt.jwtSettings;
 
     // Classe di configurazione per le impostazioni del JWT
     public class JwtSettings
@@ -16,4 +15,3 @@
         // Durata di validità del token espressa in minuti
         public int TokenExpirationMinutes { get; set; }
     }
-}

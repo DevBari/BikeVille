@@ -1,4 +1,4 @@
-﻿namespace AuthJwt.Auth
+﻿namespace LoginJwt.Auth
 {
     // Classe per rappresentare le credenziali di accesso
     public class Credentials

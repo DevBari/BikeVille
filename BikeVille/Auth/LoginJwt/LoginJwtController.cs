@@ -2,14 +2,16 @@
 using BikeVille.CriptingDecripting;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.IdentityModel.Tokens;
+using Microsoft.EntityFrameworkCore;
 using NuGet.Common;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
 
+using LoginJwt.jwtSettings;
 // Per ulteriori informazioni su come abilitare le API Web per progetti vuoti, visita https://go.microsoft.com/fwlink/?LinkID=397860
 
-namespace AuthJwt.Auth
+namespace LoginJwt.Auth
 {
     [Route("[controller]")]
     [ApiController]
@@ -18,12 +20,14 @@ namespace AuthJwt.Auth
         // Classe di configurazione del JWT
         private JwtSettings _jwtSettings;
         private AdventureWorksLt2019usersInfoContext _context;
+       private readonly ILogger<LoginJwtController> _logger;
 
         // Iniezione delle dipendenze per i settings e il contesto del database
-        public LoginJwtController(JwtSettings jwtSettings, AdventureWorksLt2019usersInfoContext context)
+        public LoginJwtController(JwtSettings jwtSettings, AdventureWorksLt2019usersInfoContext context,  ILogger<LoginJwtController> logger)
         {
             _jwtSettings = jwtSettings;
             _context = context;
+            _logger = logger;
         }
 
         // Metodo per generare un token JWT
@@ -55,32 +59,49 @@ namespace AuthJwt.Auth
 
         // Endpoint POST per il login
         [HttpPost("Login")]
-        public IActionResult Login([FromBody] Credentials credentials)
+       public async Task<IActionResult> Login([FromBody] Credentials credentials)
         {
-            // Controlla se l'utente esiste nel database
-            var user = _context.Users.FirstOrDefault(u => u.EmailAddress.Equals(credentials.Email));
-
-            if (user != null)
+            try
             {
-                // Verifica se la password inserita corrisponde a quella salvata
-                var passHash = SaltEncrypt.SaltDecryptPass(credentials.Password, user.PasswordSalt);
-                if (passHash.Equals(user.PasswordHash))
+                var user = await _context.Users
+                    .FirstOrDefaultAsync(u => u.EmailAddress.Equals(credentials.Email));
+
+                if (user != null)
                 {
-                    // Genera e restituisce il token JWT se la password è corretta
-                    string token = GenerateJwtToken(credentials.Email, user.Role.Trim());
-                    return Ok(new { token });
+                    var passHash = SaltEncrypt.SaltDecryptPass(credentials.Password, user.PasswordSalt);
+                    if (passHash.Equals(user.PasswordHash))
+                    {
+                        var token = GenerateJwtToken(credentials.Email, user.Role.Trim());
+                        _logger.LogInformation("Generato token JWT per l'utente {Email}.", credentials.Email);
+                        return Ok(new { token });
+                    }
+                    else
+                    {
+                        _logger.LogWarning("Tentativo di accesso fallito per l'utente {Email}. ErrorNumber: {ErrorNumber}, Message: {Message}",
+                                           credentials.Email,
+                                           401,
+                                           "Password errata.");
+                        return Unauthorized("Password errata.");
+                    }
                 }
                 else
                 {
-                    // Restituisce un errore di autenticazione se la password è errata
-                    return Unauthorized();
+                    _logger.LogWarning("Tentativo di accesso fallito: utente non trovato con email {Email}. ErrorNumber: {ErrorNumber}, Message: {Message}",
+                                       credentials.Email,
+                                       404,
+                                       "Utente non trovato.");
+                    return Unauthorized("Utente non trovato.");
                 }
             }
-            else
+            catch (DbUpdateException ex)
             {
-                // Restituisce un errore di autenticazione se l'utente non esiste
-                return Unauthorized();
+                _logger.LogError(ex, "Errore server durante il login. ErrorNumber: {ErrorNumber}, ErrorSeverity: {ErrorSeverity}, ErrorState: {ErrorState}",
+                                 500,
+                                 "Critical",
+                                 "Trace");
+                return StatusCode(StatusCodes.Status500InternalServerError, "Errore del server.");
             }
         }
     }
 }
+

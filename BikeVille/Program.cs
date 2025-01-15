@@ -1,5 +1,4 @@
-using AuthJwt.Auth;
-using BikeVille.Auth;
+using LoginJwt.jwtSettings;
 using BikeVille.Auth.AuthContext;
 using BikeVille.Entity.EntityContext;
 using BikeVille.Transition;
@@ -11,6 +10,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
 using System.Text.Json.Serialization;
+using BikeVille.Logging; 
 
 namespace BikeVille
 {
@@ -29,9 +29,13 @@ namespace BikeVille
             // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
             builder.Services.AddEndpointsApiExplorer();
             builder.Services.AddSwaggerGen();
-            builder.Services.AddDbContext<AdventureWorksLt2019Context>(o => o.UseSqlServer(builder.Configuration.GetConnectionString("BikeVilleDb")));
+           builder.Services.AddDbContext<AdventureWorksLt2019Context>(options =>
+            options.UseSqlServer(builder.Configuration.GetConnectionString("BikeVilleDb"))
+           .UseQuerySplittingBehavior(QuerySplittingBehavior.SplitQuery)
+);
             //auth
             builder.Services.AddDbContext<AdventureWorksLt2019usersInfoContext>(o => o.UseSqlServer(builder.Configuration.GetConnectionString("BikeVilleUsersDb")));
+    
             //cors
             builder.Services.AddCors(options =>
             {
@@ -78,6 +82,25 @@ namespace BikeVille
             //Role
             builder.Services.AddAuthorizationBuilder().AddPolicy("AdminPolicy", policy => policy.RequireRole("ADMIN"));
 
+
+            // (D) Costruisci un provider temporaneo per recuperare AdventureWorksLt2019Context
+            // (il contesto sul quale hai implementato DatabaseLogger)
+            var tempProvider = builder.Services.BuildServiceProvider();
+            var dbContext = tempProvider.GetRequiredService<AdventureWorksLt2019Context>();
+
+            // (E) Configura il logging personalizzato
+            //     Se vuoi mantenere i log su console, NON chiamare ClearProviders().
+            //     Se vuoi sostituire i provider predefiniti, puoi fare:
+            //
+            // builder.Logging.ClearProviders(); 
+            // builder.Logging.AddConsole();
+            //
+            // Poi aggiungi il tuo provider DatabaseLogger:
+            builder.Logging.AddDatabaseLogger(
+                filter: logLevel => logLevel >= LogLevel.Warning,  // Filtra i log che vuoi inserire in DB
+                context: dbContext
+            );
+            
             var app = builder.Build();
 
             //Cors
