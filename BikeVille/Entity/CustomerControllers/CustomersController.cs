@@ -17,9 +17,7 @@ namespace BikeVille.Entity.CustomerControllers
     public class CustomersController : ControllerBase
     {
         private readonly AdventureWorksLt2019Context _context;
-
         private readonly AdventureWorksLt2019usersInfoContext _authContext;
-
         private readonly ILogger<CustomersController> _logger;
 
         // Costruttore che inizializza il contesto del database
@@ -36,7 +34,6 @@ namespace BikeVille.Entity.CustomerControllers
 
         // GET: api/Customers
         // Recupera tutti i clienti con i relativi ordini e indirizzi
-
         [HttpGet("Index")]
         public async Task<ActionResult<IEnumerable<Customer>>> GetCustomers()
         {
@@ -107,7 +104,11 @@ namespace BikeVille.Entity.CustomerControllers
 
             return NoContent();
         }
-
+        
+        // DELETE: api/Customers/Delete/5
+        /// <summary>
+        /// Elimina un utente specifico e il cliente associato, se non ha ordini.
+        /// </summary>
         [HttpDelete("Delete/{id}")]
         public async Task<IActionResult> DeleteUser(int id)
         {

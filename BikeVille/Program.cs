@@ -11,8 +11,7 @@ using Microsoft.IdentityModel.Tokens;
 using System.Text;
 using System.Text.Json.Serialization;
 using BikeVille.Logging;
-using BikeVille.Middleware; // Importa il namespace del middleware
-
+using BikeVille.Middleware;
 namespace BikeVille
 {
     public class Program
@@ -81,21 +80,14 @@ namespace BikeVille
             builder.Services.AddAuthorizationBuilder().AddPolicy("AdminPolicy", policy => policy.RequireRole("ADMIN"));
 
 
-            // (D) Costruisci un provider temporaneo per recuperare AdventureWorksLt2019Context
-            // (il contesto sul quale hai implementato DatabaseLogger)
+            // provider temporaneo per recuperare AdventureWorksLt2019Context
+            // ( contesto del DatabaseLogger)
             var tempProvider = builder.Services.BuildServiceProvider();
             var dbContext = tempProvider.GetRequiredService<AdventureWorksLt2019Context>();
 
-            // (E) Configura il logging personalizzato
-            //     Se vuoi mantenere i log su console, NON chiamare ClearProviders().
-            //     Se vuoi sostituire i provider predefiniti, puoi fare:
-            //
-            // builder.Logging.ClearProviders(); 
-            // builder.Logging.AddConsole();
-            //
             // Poi aggiungi il tuo provider DatabaseLogger:
             builder.Logging.AddDatabaseLogger(
-                filter: logLevel => logLevel >= LogLevel.Warning,  // Filtra i log che vuoi inserire in DB
+                filter: logLevel => logLevel >= LogLevel.Warning,  // Filtro i log da inserire in DB
                 context: dbContext
             );
             

@@ -42,8 +42,8 @@ namespace BikeVille.Logging
             
             // Estrai l'email dallo state
             var email = ExtractEmailFromState(state);
-            // Crea l'entità ErrorLog (o la tua tabella personalizzata)
-            // Assumendo che tu abbia una classe 'ErrorLog' nel tuo Entity/DbContext.
+            
+            // Crea l'entità ErrorLog 
             var errorLog = new ErrorLog
             {
                 ErrorTime = DateTime.UtcNow,
