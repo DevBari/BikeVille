@@ -16,95 +16,80 @@ namespace BikeVille.Entity.ProductControllers
     public class ProductCategoriesController : ControllerBase
     {
         private readonly AdventureWorksLt2019Context _context;
+        private readonly ILogger<ProductCategoriesController> _logger;
 
-        public ProductCategoriesController(AdventureWorksLt2019Context context)
+        public ProductCategoriesController(AdventureWorksLt2019Context context, ILogger<ProductCategoriesController> logger)
         {
             _context = context;
+            _logger = logger;
         }
 
         // GET: api/ProductCategories
         [HttpGet("Index")]
-        public async Task<ActionResult<IEnumerable<ProductCategory>>> GetProductCategories() 
+        public async Task<ActionResult<IEnumerable<ProductCategory>>> GetProductCategories()
         {
-            return await _context.ProductCategories.Include(c=>c.Products).Include(c => c.InverseParentProductCategory).ThenInclude(ip=>ip.Products).ToListAsync();
+            try
+            {
+                var productCategories = await _context.ProductCategories
+                    .Include(c => c.Products)
+                    .Include(c => c.InverseParentProductCategory)
+                        .ThenInclude(ip => ip.Products)
+                    .ToListAsync();
+
+                _logger.LogInformation("Recuperati {Count} categorie di prodotto.", productCategories.Count);
+                return Ok(productCategories);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Errore durante il recupero delle categorie di prodotto.");
+                return StatusCode(StatusCodes.Status500InternalServerError, "Errore del server durante il recupero delle categorie di prodotto.");
+            }
         }
+
+
         [HttpGet("IndexWhithOutProducts")]
-        public async Task<ActionResult<IEnumerable<ProductCategory>>> GetProductCategoriesWhithOutProducts()
+       public async Task<ActionResult<IEnumerable<ProductCategory>>> GetProductCategoriesWhithOutProducts()
         {
-            return await _context.ProductCategories.ToListAsync();
+            try
+            {
+                var productCategories = await _context.ProductCategories.ToListAsync();
+                _logger.LogInformation("Recuperati {Count} categorie di prodotto senza prodotti associati.", productCategories.Count);
+                return Ok(productCategories);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Errore durante il recupero delle categorie di prodotto senza prodotti.");
+                return StatusCode(StatusCodes.Status500InternalServerError, "Errore del server durante il recupero delle categorie di prodotto.");
+            }
         }
 
         // GET: api/ProductCategories/5
         [HttpGet("Details/{id}")]
         public async Task<ActionResult<ProductCategory>> GetProductCategory(int id)
         {
-            var productCategory = await _context.ProductCategories.Include(c => c.Products).Include(c=>c.InverseParentProductCategory).ThenInclude(ip => ip.Products).FirstOrDefaultAsync(c=>c.ProductCategoryId==id);
-
-            if (productCategory == null)
+            try
             {
-                return NotFound();
+                var productCategory = await _context.ProductCategories
+                    .Include(c => c.Products)
+                    .Include(c => c.InverseParentProductCategory)
+                        .ThenInclude(ip => ip.Products)
+                    .FirstOrDefaultAsync(c => c.ProductCategoryId == id);
+
+                if (productCategory == null)
+                {
+                    _logger.LogWarning("Categoria di prodotto non trovata con ID {ProductCategoryId}.", id);
+                    return NotFound("Categoria di prodotto non trovata.");
+                }
+
+                _logger.LogInformation("Recuperata categoria di prodotto con ID {ProductCategoryId}.", id);
+                return Ok(productCategory);
             }
-
-            return productCategory;
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Errore durante il recupero della categoria di prodotto con ID {ProductCategoryId}.", id);
+                return StatusCode(StatusCodes.Status500InternalServerError, "Errore del server durante il recupero della categoria di prodotto.");
+            }
         }
-
-        //// PUT: api/ProductCategories/5
-        //// To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
-        //[HttpPut("{id}")]
-        //public async Task<IActionResult> PutProductCategory(int id, ProductCategory productCategory)
-        //{
-        //    if (id != productCategory.ProductCategoryId)
-        //    {
-        //        return BadRequest();
-        //    }
-
-        //    _context.Entry(productCategory).State = EntityState.Modified;
-
-        //    try
-        //    {
-        //        await _context.SaveChangesAsync();
-        //    }
-        //    catch (DbUpdateConcurrencyException)
-        //    {
-        //        if (!ProductCategoryExists(id))
-        //        {
-        //            return NotFound();
-        //        }
-        //        else
-        //        {
-        //            throw;
-        //        }
-        //    }
-
-        //    return NoContent();
-        //}
-
-        //// POST: api/ProductCategories
-        //// To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
-        //[HttpPost]
-        //public async Task<ActionResult<ProductCategory>> PostProductCategory(ProductCategory productCategory)
-        //{
-        //    _context.ProductCategories.Add(productCategory);
-        //    await _context.SaveChangesAsync();
-
-        //    return CreatedAtAction("GetProductCategory", new { id = productCategory.ProductCategoryId }, productCategory);
-        //}
-
-        //// DELETE: api/ProductCategories/5
-        //[HttpDelete("{id}")]
-        //public async Task<IActionResult> DeleteProductCategory(int id)
-        //{
-        //    var productCategory = await _context.ProductCategories.FindAsync(id);
-        //    if (productCategory == null)
-        //    {
-        //        return NotFound();
-        //    }
-
-        //    _context.ProductCategories.Remove(productCategory);
-        //    await _context.SaveChangesAsync();
-
-        //    return NoContent();
-        //}
 
         private bool ProductCategoryExists(int id)
         {

@@ -61,46 +61,30 @@ namespace LoginJwt.Auth
         [HttpPost("Login")]
        public async Task<IActionResult> Login([FromBody] Credentials credentials)
         {
-            try
+            if (!ModelState.IsValid)
             {
-                var user = await _context.Users
-                    .FirstOrDefaultAsync(u => u.EmailAddress.Equals(credentials.Email));
+                return BadRequest(ModelState);
+            }
 
-                if (user != null)
-                {
-                    var passHash = SaltEncrypt.SaltDecryptPass(credentials.Password, user.PasswordSalt);
-                    if (passHash.Equals(user.PasswordHash))
-                    {
-                        var token = GenerateJwtToken(credentials.Email, user.Role.Trim());
-                        _logger.LogInformation("Generato token JWT per l'utente {Email}.", credentials.Email);
-                        return Ok(new { token });
-                    }
-                    else
-                    {
-                        _logger.LogWarning("Tentativo di accesso fallito per l'utente {Email}. ErrorNumber: {ErrorNumber}, Message: {Message}",
-                                           credentials.Email,
-                                           401,
-                                           "Password errata.");
-                        return Unauthorized("Password errata.");
-                    }
-                }
-                else
-                {
-                    _logger.LogWarning("Tentativo di accesso fallito: utente non trovato con email {Email}. ErrorNumber: {ErrorNumber}, Message: {Message}",
-                                       credentials.Email,
-                                       404,
-                                       "Utente non trovato.");
-                    return Unauthorized("Utente non trovato.");
-                }
-            }
-            catch (DbUpdateException ex)
+            var user = await _context.Users
+                .FirstOrDefaultAsync(u => u.EmailAddress.Equals(credentials.Email));
+
+            if (user == null)
             {
-                _logger.LogError(ex, "Errore server durante il login. ErrorNumber: {ErrorNumber}, ErrorSeverity: {ErrorSeverity}, ErrorState: {ErrorState}",
-                                 500,
-                                 "Critical",
-                                 "Trace");
-                return StatusCode(StatusCodes.Status500InternalServerError, "Errore del server.");
+                _logger.LogWarning("Tentativo di accesso fallito: utente non trovato con email {Email}.", credentials.Email);
+                return Unauthorized("Utente non trovato.");
             }
+
+            var passHash = SaltEncrypt.SaltDecryptPass(credentials.Password, user.PasswordSalt);
+            if (!passHash.Equals(user.PasswordHash))
+            {
+                _logger.LogWarning("Tentativo di accesso fallito per l'utente {Email}: password errata.", credentials.Email);
+                return Unauthorized("Password errata.");
+            }
+
+            var token = GenerateJwtToken(credentials.Email, user.Role.Trim());
+            _logger.LogInformation("Generato token JWT per l'utente {Email}.", credentials.Email);
+            return Ok(new { token });
         }
     }
 }

@@ -15,90 +15,59 @@ namespace BikeVille.Entity.ProductControllers
     public class ProductModelsController : ControllerBase
     {
         private readonly AdventureWorksLt2019Context _context;
+        private readonly ILogger<ProductModelsController> _logger;
 
-        public ProductModelsController(AdventureWorksLt2019Context context)
+        public ProductModelsController(AdventureWorksLt2019Context context, ILogger<ProductModelsController> logger)
         {
             _context = context;
+            _logger = logger;
         }
 
         // GET: api/ProductModels
         [HttpGet("Index")]
         public async Task<ActionResult<IEnumerable<ProductModel>>> GetProductModels()
-        {
-            return await _context.ProductModels.ToListAsync();
+        { 
+            try
+            {
+                var productModels = await _context.ProductModels
+                    .Include(pm => pm.Products)
+                    .ToListAsync();
+
+                _logger.LogInformation("Recuperati {Count} modelli di prodotto.", productModels.Count);
+                return Ok(productModels);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Errore durante il recupero dei modelli di prodotto.");
+                return StatusCode(StatusCodes.Status500InternalServerError, "Errore del server durante il recupero dei modelli di prodotto.");
+            }
         }
 
         // GET: api/ProductModels/5
         [HttpGet("Details/{id}")]
         public async Task<ActionResult<ProductModel>> GetProductModel(int id)
         {
-            var productModel = await _context.ProductModels.Include(pm => pm.Products).FirstOrDefaultAsync(pm=>pm.ProductModelId==id);
-
-            if (productModel == null)
+            try
             {
-                return NotFound();
+                var productModel = await _context.ProductModels
+                    .Include(pm => pm.Products)
+                    .FirstOrDefaultAsync(pm => pm.ProductModelId == id);
+
+                if (productModel == null)
+                {
+                    _logger.LogWarning("Modello di prodotto non trovato con ID {ProductModelId}.", id);
+                    return NotFound("Modello di prodotto non trovato.");
+                }
+
+                _logger.LogInformation("Recuperato modello di prodotto con ID {ProductModelId}.", id);
+                return Ok(productModel);
             }
-
-            return productModel;
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Errore durante il recupero del modello di prodotto con ID {ProductModelId}.", id);
+                return StatusCode(StatusCodes.Status500InternalServerError, "Errore del server durante il recupero del modello di prodotto.");
+            }
         }
-
-        //// PUT: api/ProductModels/5
-        //// To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
-        //[HttpPut("{id}")]
-        //public async Task<IActionResult> PutProductModel(int id, ProductModel productModel)
-        //{
-        //    if (id != productModel.ProductModelId)
-        //    {
-        //        return BadRequest();
-        //    }
-
-        //    _context.Entry(productModel).State = EntityState.Modified;
-
-        //    try
-        //    {
-        //        await _context.SaveChangesAsync();
-        //    }
-        //    catch (DbUpdateConcurrencyException)
-        //    {
-        //        if (!ProductModelExists(id))
-        //        {
-        //            return NotFound();
-        //        }
-        //        else
-        //        {
-        //            throw;
-        //        }
-        //    }
-
-        //    return NoContent();
-        //}
-
-        //// POST: api/ProductModels
-        //// To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
-        //[HttpPost]
-        //public async Task<ActionResult<ProductModel>> PostProductModel(ProductModel productModel)
-        //{
-        //    _context.ProductModels.Add(productModel);
-        //    await _context.SaveChangesAsync();
-
-        //    return CreatedAtAction("GetProductModel", new { id = productModel.ProductModelId }, productModel);
-        //}
-
-        //// DELETE: api/ProductModels/5
-        //[HttpDelete("{id}")]
-        //public async Task<IActionResult> DeleteProductModel(int id)
-        //{
-        //    var productModel = await _context.ProductModels.FindAsync(id);
-        //    if (productModel == null)
-        //    {
-        //        return NotFound();
-        //    }
-
-        //    _context.ProductModels.Remove(productModel);
-        //    await _context.SaveChangesAsync();
-
-        //    return NoContent();
-        //}
 
         private bool ProductModelExists(int id)
         {

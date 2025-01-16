@@ -20,29 +20,36 @@ namespace BikeVille.Entity.CustomerControllers
 
         private readonly AdventureWorksLt2019usersInfoContext _authContext;
 
+        private readonly ILogger<CustomersController> _logger;
+
         // Costruttore che inizializza il contesto del database
-        public CustomersController(AdventureWorksLt2019Context context, AdventureWorksLt2019usersInfoContext authContext)
+        public CustomersController(
+            AdventureWorksLt2019Context context,
+            AdventureWorksLt2019usersInfoContext authContext,
+            ILogger<CustomersController> logger) // Iniezione del logger
         {
             _context = context;
             _authContext = authContext;
-
+            _logger = logger;
         }
+
 
         // GET: api/Customers
         // Recupera tutti i clienti con i relativi ordini e indirizzi
-        
+
         [HttpGet("Index")]
         public async Task<ActionResult<IEnumerable<Customer>>> GetCustomers()
         {
-            return await _context.Customers
-                .Include(c => c.SalesOrderHeaders)  // Include gli ordini di vendita del cliente
-                .ThenInclude(soh => soh.SalesOrderDetails)  // Include i dettagli degli ordini di vendita
-                .Include(c => c.CustomerAddresses)  // Include gli indirizzi del cliente
-                .ThenInclude(ca => ca.Address)  // Include gli indirizzi fisici
-                .ToListAsync();
+            var customers = await _context.Customers
+                   .Include(c => c.SalesOrderHeaders)
+                       .ThenInclude(soh => soh.SalesOrderDetails)
+                   .Include(c => c.CustomerAddresses)
+                       .ThenInclude(ca => ca.Address)
+                   .ToListAsync();
+
+            _logger.LogInformation("Recuperati {Count} clienti.", customers.Count);
+            return Ok(customers);
         }
-
-
 
 
         // GET: api/Customers/5
@@ -52,16 +59,17 @@ namespace BikeVille.Entity.CustomerControllers
         {
             var customer = await _context.Customers
                 .Include(c => c.SalesOrderHeaders)
-                .ThenInclude(soh => soh.SalesOrderDetails)
+                    .ThenInclude(soh => soh.SalesOrderDetails)
                 .FirstOrDefaultAsync(c => c.CustomerId == id);
 
-            // Se il cliente non esiste, restituisce un errore 404 (Non trovato)
             if (customer == null)
             {
-                return NotFound();
+                _logger.LogWarning("Cliente non trovato con ID {CustomerId}.", id);
+                return NotFound("Cliente non trovato.");
             }
 
-            return customer;
+            _logger.LogInformation("Recuperato cliente con ID {CustomerId}.", id);
+            return Ok(customer);
         }
 
         // PUT: api/Customers/5
@@ -70,46 +78,56 @@ namespace BikeVille.Entity.CustomerControllers
         [HttpPut("Update/{id}")]
         public async Task<IActionResult> PutCustomer(int id, Customer customer)
         {
-            // Verifica se l'ID del cliente passato nella richiesta corrisponde a quello dell'oggetto
             if (id != customer.CustomerId)
             {
-                return BadRequest();
+                _logger.LogWarning("Tentativo di aggiornamento fallito per cliente ID {CustomerId}. ID non corrispondente.", id);
+                return BadRequest("ID non corrispondente.");
             }
 
-            _context.Entry(customer).State = EntityState.Modified;  // Imposta lo stato dell'entità come modificato
+            _context.Entry(customer).State = EntityState.Modified;
 
             try
             {
-                await _context.SaveChangesAsync();  // Salva le modifiche nel database
+                await _context.SaveChangesAsync();
+                _logger.LogInformation("Cliente ID {CustomerId} aggiornato con successo.", id);
             }
-            catch (DbUpdateConcurrencyException)
+            catch (DbUpdateConcurrencyException ex)
             {
-                // Gestisce l'errore se si verifica un conflitto durante l'aggiornamento
                 if (!CustomerExists(id))
                 {
-                    return NotFound();  // Se il cliente non esiste più, restituisce 404
+                    _logger.LogWarning("Cliente non trovato durante l'aggiornamento con ID {CustomerId}.", id);
+                    return NotFound("Cliente non trovato.");
                 }
                 else
                 {
+                    _logger.LogError(ex, "Errore di concorrenza durante l'aggiornamento del cliente ID {CustomerId}.", id);
                     throw;
                 }
             }
 
-            return NoContent();  // Restituisce un 204 No Content se l'aggiornamento è riuscito
+            return NoContent();
         }
+
         [HttpDelete("Delete/{id}")]
-        
-public async Task<IActionResult> DeleteUser(int id)
+        public async Task<IActionResult> DeleteUser(int id)
         {
             var user = await _authContext.Users.FindAsync(id);
             if (user == null)
             {
-                return NotFound();
+                _logger.LogWarning("Tentativo di eliminazione fallito: utente non trovato con ID {UserId}.", id);
+                return NotFound("Utente non trovato.");
             }
 
             var customer = await _context.Customers
-                .Include(c => c.CustomerAddresses) // Include gli indirizzi associati al cliente
+                .Include(c => c.CustomerAddresses)
+                .Include(c => c.SalesOrderHeaders) // Include gli ordini associati al cliente
                 .FirstOrDefaultAsync(c => c.UserID == id);
+
+            if (customer != null && customer.SalesOrderHeaders.Any())
+            {
+                _logger.LogWarning("Tentativo di eliminazione fallito: il cliente ID {CustomerId} ha ordini associati.", customer.CustomerId);
+                return BadRequest("Impossibile eliminare l'utente perché ha ordini associati.");
+            }
 
             using var transaction = await _context.Database.BeginTransactionAsync();
             try
@@ -120,10 +138,12 @@ public async Task<IActionResult> DeleteUser(int id)
                     if (customer.CustomerAddresses != null && customer.CustomerAddresses.Any())
                     {
                         _context.CustomerAddresses.RemoveRange(customer.CustomerAddresses);
+                        _logger.LogInformation("Rimossi indirizzi associati per il cliente ID {CustomerId}.", customer.CustomerId);
                     }
 
                     // Elimina il cliente
                     _context.Customers.Remove(customer);
+                    _logger.LogInformation("Cliente associato all'utente {EmailAddress} rimosso.", user.EmailAddress);
                     await _context.SaveChangesAsync();
                 }
 
@@ -132,18 +152,19 @@ public async Task<IActionResult> DeleteUser(int id)
                 await _authContext.SaveChangesAsync();
 
                 await transaction.CommitAsync();
+                _logger.LogInformation("Utente {EmailAddress} eliminato con successo.", user.EmailAddress);
             }
             catch (Exception ex)
             {
                 await transaction.RollbackAsync();
-                // Log dell'errore (se hai configurato un logger)
-                Console.Error.WriteLine($"Error while deleting user with ID {id}: {ex.Message}");
-                throw;
+                _logger.LogError(ex, "Errore durante l'eliminazione dell'utente con ID {UserId}.", id);
+                return StatusCode(StatusCodes.Status500InternalServerError, "Errore del server durante l'eliminazione dell'utente.");
             }
 
             return NoContent();
         }
-
+        
+        
         // Metodo privato che verifica se un cliente con l'ID specificato esiste nel database
         private bool CustomerExists(int id)
         {

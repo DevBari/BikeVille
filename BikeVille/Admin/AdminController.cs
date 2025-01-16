@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using System.ComponentModel.DataAnnotations;
 
 namespace BikeVille.Admin
 {
@@ -13,64 +14,57 @@ namespace BikeVille.Admin
     [ApiController]
     public class AdminController : ControllerBase
     {
-        private readonly AdventureWorksLt2019usersInfoContext _context;
-        private readonly AdventureWorksLt2019Context _contextC;
+        private readonly AdventureWorksLt2019usersInfoContext _authContext;
+        private readonly AdventureWorksLt2019Context _context;
         private readonly ILogger<AdminController> _logger;
-
-        public AdminController(AdventureWorksLt2019usersInfoContext context, ILogger<AdminController> logger, AdventureWorksLt2019Context contextC)
+        public AdminController(
+            AdventureWorksLt2019usersInfoContext authContext,
+            AdventureWorksLt2019Context context,
+            ILogger<AdminController> logger)
         {
+            _authContext = authContext;
             _context = context;
             _logger = logger;
-            _contextC = contextC;
         }
 
         [HttpGet("toBeAdmin/{email}")]
-        // [Authorize(Roles = "ADMIN")] // Rimuovi temporaneamente per test
-        public async Task<IActionResult> toBeAdmin(string email)
+        public async Task<IActionResult> toBeAdmin([FromRoute][EmailAddress] string email)
         {
-            if (string.IsNullOrWhiteSpace(email))
+           if (string.IsNullOrWhiteSpace(email))
             {
-                return BadRequest("Email is null or empty");
+                _logger.LogWarning("Tentativo di promozione con email null o vuota.");
+                return BadRequest("Email non può essere nulla o vuota.");
             }
 
-            var user = await _context.Users.FirstOrDefaultAsync(u => u.EmailAddress == email);
-            var customer = await _contextC.Customers.FirstOrDefaultAsync(c => c.EmailAddress == email);
+            var user = await _authContext.Users.FirstOrDefaultAsync(u => u.EmailAddress == email);
+            var customer = await _context.Customers.FirstOrDefaultAsync(c => c.EmailAddress == email);
 
             if (user == null)
             {
-                return BadRequest("User not found");
+                _logger.LogWarning("Utente non trovato con email: {Email}.", email);
+                return NotFound($"Utente con email {email} non trovato.");
             }
 
-            try
+            user.Role = "ADMIN";
+            _authContext.Users.Update(user);
+            _logger.LogInformation("Aggiornamento ruolo utente: {UserId} a ADMIN.", user.UserId);
+
+            var affectedRows = await _authContext.SaveChangesAsync();
+            if (affectedRows == 0)
             {
-                user.Role = "ADMIN";
-                _context.Entry(user).State = EntityState.Modified;
-
-                _logger.LogInformation($"Updating user: {user.UserId}, Role: {user.Role}");
-
-                var affectedRows = await _context.SaveChangesAsync();
-                if (affectedRows == 0)
-                {
-                    _logger.LogWarning("No rows were affected when updating the user role.");
-                    return StatusCode(StatusCodes.Status500InternalServerError, "Failed to update user role.");
-                }
-
-                if (customer != null)
-                {
-                    _contextC.Customers.Remove(customer);
-                    await _contextC.SaveChangesAsync();
-                }
-
-                var updatedUser = await _context.Users.FirstOrDefaultAsync(u => u.EmailAddress == email);
-                _logger.LogInformation($"Updated user: {updatedUser.UserId}, Role: {updatedUser.Role}");
+                _logger.LogWarning("Nessuna riga modificata durante l'aggiornamento del ruolo per l'utente {UserId}.", user.UserId);
+                return StatusCode(StatusCodes.Status500InternalServerError, "Impossibile aggiornare il ruolo dell'utente.");
             }
-            catch (Exception ex)
+
+            if (customer != null)
             {
-                _logger.LogError(ex, "Error updating user role");
-                return StatusCode(StatusCodes.Status500InternalServerError, $"Error: {ex.Message}");
+                _context.Customers.Remove(customer);
+                await _context.SaveChangesAsync();
+                _logger.LogInformation("Cliente associato rimosso per l'utente {UserId} dopo promozione a ADMIN.", user.UserId);
             }
 
-            return Ok($"User {email} is now an admin");
+            _logger.LogInformation("Utente {UserId} promosso a ADMIN con successo.", user.UserId);
+            return Ok($"L'utente {email} è ora un ADMIN.");
         }
     }
 }

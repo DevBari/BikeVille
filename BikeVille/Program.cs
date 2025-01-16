@@ -10,7 +10,8 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
 using System.Text.Json.Serialization;
-using BikeVille.Logging; 
+using BikeVille.Logging;
+using BikeVille.Middleware; // Importa il namespace del middleware
 
 namespace BikeVille
 {
@@ -29,10 +30,7 @@ namespace BikeVille
             // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
             builder.Services.AddEndpointsApiExplorer();
             builder.Services.AddSwaggerGen();
-           builder.Services.AddDbContext<AdventureWorksLt2019Context>(options =>
-            options.UseSqlServer(builder.Configuration.GetConnectionString("BikeVilleDb"))
-           .UseQuerySplittingBehavior(QuerySplittingBehavior.SplitQuery)
-);
+            builder.Services.AddDbContext<AdventureWorksLt2019Context>(o => o.UseSqlServer(builder.Configuration.GetConnectionString("BikeVilleDb")));
             //auth
             builder.Services.AddDbContext<AdventureWorksLt2019usersInfoContext>(o => o.UseSqlServer(builder.Configuration.GetConnectionString("BikeVilleUsersDb")));
     
@@ -105,6 +103,9 @@ namespace BikeVille
 
             //Cors
             app.UseCors("AllowAll");
+
+           // Use the error handling middleware
+            app.UseMiddleware<ErrorHandlingMiddleware>();
 
             // Configure the HTTP request pipeline.
             if (app.Environment.IsDevelopment())

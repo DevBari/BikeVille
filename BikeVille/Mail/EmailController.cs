@@ -17,13 +17,13 @@ namespace AuthJwt.Mail
                 var smtpClient = new SmtpClient("smtp.mailtrap.io")
                 {
                     Port = 2525,
-                    Credentials = new NetworkCredential("9eee65065e91d5", "a9dd17c0e5f652"),
+                    Credentials = new NetworkCredential("adc1d4cf235e16", "325f87715bb449"),
                     EnableSsl = true,
                 };
 
                 var mailMessage = new MailMessage
                 {
-                    From = new MailAddress("testemaildan98202@gmail.com"),
+                    From = new MailAddress("bikeville.commercial@gmail.com"),
                     Subject = request.Subject,
                     Body = request.Message,
                     IsBodyHtml = true,
@@ -48,18 +48,18 @@ namespace AuthJwt.Mail
                 var smtpClient = new SmtpClient("smtp.mailtrap.io")
                 {
                     Port = 2525,
-                    Credentials = new NetworkCredential("9eee65065e91d5", "a9dd17c0e5f652"),
+                    Credentials = new NetworkCredential("adc1d4cf235e16", "325f87715bb449"),
                     EnableSsl = true,
                 };
 
                 var mailMessage = new MailMessage
                 {
-                    From = new MailAddress("testemaildan98202@gmail.com"),
+                    From = new MailAddress("bikeville.commercial@gmail.com"),
                     Subject = "Richiesta di collaborazione",
                     Body = request.Message,
                     IsBodyHtml = true,
                 };
-                mailMessage.To.Add("testemaildan98202@gmail.com");
+                mailMessage.To.Add("bikeville.commercial@gmail.com");
 
                 await smtpClient.SendMailAsync(mailMessage);
 
@@ -79,13 +79,13 @@ namespace AuthJwt.Mail
                 var smtpClient = new SmtpClient("smtp.mailtrap.io")
                 {
                     Port = 2525,
-                    Credentials = new NetworkCredential("9eee65065e91d5", "a9dd17c0e5f652"),
+                    Credentials = new NetworkCredential("adc1d4cf235e16", "325f87715bb449"),
                     EnableSsl = true,
                 };
 
                 var mailMessage = new MailMessage
                 {
-                    From = new MailAddress("testemaildan98202@gmail.com"),
+                    From = new MailAddress("bikeville.commercial@gmail.com"),
                     Subject = "Recupero password",
                     Body = request.Message,
                     IsBodyHtml = true,

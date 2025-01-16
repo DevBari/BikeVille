@@ -24,13 +24,15 @@ namespace BikeVille.Auth.AuthController
     {
         private readonly AdventureWorksLt2019usersInfoContext _authContext;
         private readonly AdventureWorksLt2019Context _context;
+        private readonly ILogger<UsersController> _logger;
         private const string CLIENT_ID = "467980910008-a1c9tm4dg1omhet8vckq8t77nr42feea.apps.googleusercontent.com"; // Inserisci il tuo CLIENT_ID di Google
 
         // Costruttore che inietta il contesto del database
-        public UsersController(AdventureWorksLt2019usersInfoContext authContext, AdventureWorksLt2019Context context)
+        public UsersController(AdventureWorksLt2019usersInfoContext authContext, AdventureWorksLt2019Context context, ILogger<UsersController> logger)
         {
             _authContext = authContext;
             _context = context;
+            _logger = logger;
 
         }
 
@@ -39,7 +41,8 @@ namespace BikeVille.Auth.AuthController
         [HttpGet("Index")]
         public async Task<ActionResult<IEnumerable<User>>> GetUsers()
         {
-            return await _authContext.Users.ToListAsync();
+            var users = await _authContext.Users.ToListAsync();
+            return Ok(users);
         }
 
         // GET: api/Users/5
@@ -51,10 +54,11 @@ namespace BikeVille.Auth.AuthController
 
             if (user == null)
             {
-                return NotFound(); // Se l'utente non esiste, restituisce 404
+                _logger.LogWarning("Utente non trovato con ID {UserId}.", id);
+                return NotFound("Utente non trovato.");
             }
 
-            return user;
+            return Ok(user);
         }
 
         // GET: api/Users/UserPass/{password}/{id}
@@ -63,51 +67,56 @@ namespace BikeVille.Auth.AuthController
         public async Task<ActionResult<bool>> GetUserPass(int id, string password)
         {
             var user = await _authContext.Users.FindAsync(id);
-            if (SaltEncrypt.SaltDecryptPass(password, user.PasswordSalt) == user.PasswordHash)
+            if (user == null)
             {
-                return true; // La password è corretta
+                _logger.LogWarning("Verifica password fallita: utente non trovato con ID {UserId}.", id);
+                return NotFound("Utente non trovato.");
             }
-            return false; // La password non è corretta
+
+            bool isValid = SaltEncrypt.SaltDecryptPass(password, user.PasswordSalt) == user.PasswordHash;
+            return Ok(isValid);
         }
 
         // GET: api/Users/AuthUser/{emailAddress}
         // Restituisce l'utente corrispondente all'indirizzo email
         [HttpGet("AuthUser/{emailAddress}")]
-        public async Task<ActionResult<User>> GetUser(string emailAddress)
+         public async Task<ActionResult<User>> GetUser(string emailAddress)
         {
             var user = await _authContext.Users.FirstOrDefaultAsync(x => x.EmailAddress.Equals(emailAddress));
 
             if (user == null)
             {
-                return NotFound(); // Se l'utente non esiste, restituisce 404
+                _logger.LogWarning("Utente non trovato con Email {EmailAddress}.", emailAddress);
+                return NotFound("Utente non trovato.");
             }
 
-            return user;
+            return Ok(user);
         }
+
 
         // PUT: api/Users/5
         // Aggiorna i dettagli di un utente specificato dall'ID
-       
         [HttpPut("Update/{id}")]
-        public async Task<IActionResult> PutUser(int id, User user)
+        public async Task<IActionResult> PutUser(int id, [FromBody] User user)
         {
             if (id != user.UserId)
             {
-                return BadRequest(); // Se l'ID non corrisponde, restituisce un errore
+                _logger.LogWarning("Tentativo di aggiornamento fallito per l'utente {Email}. ID non corrispondente.", user.EmailAddress);
+                return BadRequest("ID non corrispondente.");
             }
 
-            // Trova l'utente nel contesto _authContext
             var existingUser = await _authContext.Users.FindAsync(id);
             if (existingUser == null)
             {
-                return NotFound(); // Se l'utente non esiste, restituisce 404
+                _logger.LogWarning("Tentativo di aggiornamento fallito: utente non trovato con email {Email}.", user.EmailAddress);
+                return NotFound("Utente non trovato.");
             }
 
-            // Trova il cliente corrispondente alla UserId
             var customer = await _context.Customers.FirstOrDefaultAsync(c => c.UserID == id);
             if (customer == null)
             {
-                return NotFound(); // Se il cliente non esiste, restituisce 404
+                _logger.LogWarning("Tentativo di aggiornamento fallito: cliente non trovato per l'utente {Email}.", user.EmailAddress);
+                return NotFound("Cliente non trovato.");
             }
 
             // Aggiorna i dati dell'utente
@@ -120,38 +129,25 @@ namespace BikeVille.Auth.AuthController
             existingUser.Role = user.Role;
 
             // Aggiorna anche il cliente con i dati dell'utente
-            customer.Title = user.Title; // Aggiorna il titolo
+            customer.Title = user.Title;
             customer.FirstName = user.FirstName;
             customer.MiddleName = user.MiddleName;
             customer.LastName = user.LastName;
             customer.Suffix = user.Suffix;
-            customer.EmailAddress = user.EmailAddress; // Aggiorna l'email
+            customer.EmailAddress = user.EmailAddress;
             customer.Phone = user.Phone;
 
             // Marca l'utente e il cliente come modificati
             _authContext.Entry(existingUser).State = EntityState.Modified;
             _context.Entry(customer).State = EntityState.Modified;
 
-            try
-            {
-                // Salva le modifiche nei due contesti
-                await _authContext.SaveChangesAsync();
-                await _context.SaveChangesAsync();
-            }
-            catch (DbUpdateConcurrencyException)
-            {
-                if (!UserExistsU(id))
-                {
-                    return NotFound(); // Se l'utente non esiste, restituisce 404
-                }
-                else
-                {
-                    throw; // Rilancia l'errore se c'è un problema di concorrenza
-                }
-            }
+            await _authContext.SaveChangesAsync();
+            await _context.SaveChangesAsync();
 
-            return NoContent(); // Restituisce una risposta vuota di successo
+            _logger.LogInformation("Aggiornato con successo utente {Email}.", user.EmailAddress);
+            return NoContent();
         }
+
 
         // Metodo privato per verificare se l'utente esiste
         private bool UserExistsU(int id)
@@ -165,28 +161,41 @@ namespace BikeVille.Auth.AuthController
         [HttpPut("UpdatePass")]
         public async Task<IActionResult> PutUpdatePass([FromBody] ChangePassRequest changePassRequest)
         {
-            var user = await _authContext.Users.FindAsync(changePassRequest.Id);
-            KeyValuePair<string, string> passHashSalt = SaltEncrypt.SaltEncryptPass(changePassRequest.Password);
-
-            if (user == null)
+            if (!ModelState.IsValid)
             {
-                return BadRequest(); // Se l'utente non esiste, restituisce un errore
+                return BadRequest(ModelState);
             }
 
-            user.PasswordHash = passHashSalt.Key; // Imposta il nuovo hash della password
-            user.PasswordSalt = passHashSalt.Value; // Imposta il nuovo salt della password
+            var user = await _authContext.Users.FindAsync(changePassRequest.Id);
+            if (user == null)
+            {
+                _logger.LogWarning("Tentativo di aggiornamento password fallito: utente non trovato con ID {UserId}.", changePassRequest.Id);
+                return NotFound("Utente non trovato.");
+            }
+
+            var passHashSalt = SaltEncrypt.SaltEncryptPass(changePassRequest.Password);
+            user.PasswordHash = passHashSalt.Key;
+            user.PasswordSalt = passHashSalt.Value;
+
             _authContext.Entry(user).State = EntityState.Modified;
             await _authContext.SaveChangesAsync();
 
-            return NoContent(); // Restituisce una risposta vuota di successo
+            _logger.LogInformation("Password aggiornata per utente {Email}.", user.EmailAddress);
+            return NoContent();
         }
+
 
         // POST: api/Users/Add
         // Aggiunge un nuovo utente
         [HttpPost("Add")]
-        public async Task<ActionResult<User>> PostUser(UserDto userDto)
+         public async Task<ActionResult<User>> PostUser([FromBody] UserDto userDto)
         {
-            KeyValuePair<string, string> passHashSalt = SaltEncrypt.SaltEncryptPass(userDto.Password);
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ModelState);
+            }
+
+            var passHashSalt = SaltEncrypt.SaltEncryptPass(userDto.Password);
 
             var user = new User()
             {
@@ -196,165 +205,63 @@ namespace BikeVille.Auth.AuthController
                 Suffix = userDto.Suffix,
                 EmailAddress = userDto.EmailAddress,
                 Phone = userDto.Phone,
-                PasswordHash = passHashSalt.Key, // Imposta l'hash della password
-                PasswordSalt = passHashSalt.Value, // Imposta il salt della password
+                PasswordHash = passHashSalt.Key,
+                PasswordSalt = passHashSalt.Value,
                 Role = userDto.Role,
-                Rowguid = Guid.NewGuid(), // Crea un nuovo identificatore GUID
+                Rowguid = Guid.NewGuid(),
             };
-            _authContext.Users.Add(user); // Aggiunge il nuovo utente al contesto
+            _authContext.Users.Add(user);
             await _authContext.SaveChangesAsync();
+
             var customer = new Customer()
             {
-                NameStyle = true, // Impostazione del formato del nome, ad esempio western style
+                NameStyle = true,
                 FirstName = userDto.FirstName,
                 MiddleName = userDto.MiddleName,
                 LastName = userDto.LastName,
                 Suffix = userDto.Suffix,
                 EmailAddress = userDto.EmailAddress,
                 Phone = userDto.Phone,
-                PasswordHash = "", // Usa lo stesso hash della password
-                PasswordSalt = "", // Usa lo stesso salt della password
-                Rowguid = Guid.NewGuid(), // GUID unico per il customer
-                ModifiedDate = DateTime.UtcNow, // Data di ultima modifica
+                PasswordHash = "",
+                PasswordSalt = "",
+                Rowguid = Guid.NewGuid(),
+                ModifiedDate = DateTime.UtcNow,
                 UserID = user.UserId
             };
 
             _context.Customers.Add(customer);
             await _context.SaveChangesAsync();
 
-
-            return CreatedAtAction("GetUser", new { id = user.UserId }, user); // Restituisce l'utente creato con il codice 201
+            _logger.LogInformation("Creato nuovo utente {Email} e relativo cliente.", user.EmailAddress);
+            return CreatedAtAction("GetUser", new { id = user.UserId }, user);
         }
+
 
         // DELETE: api/Users/5
         // Elimina un utente specificato dall'ID
         [HttpDelete("Delete/{id}")]
-        public async Task<IActionResult> DeleteUser(int id)
+         public async Task<IActionResult> DeleteUser(int id)
         {
-            // Trova l'utente con il relativo UserID
             var user = await _authContext.Users.FindAsync(id);
             if (user == null)
             {
-                return NotFound(); // Se l'utente non esiste, restituisce 404
+                _logger.LogWarning("Tentativo di eliminazione fallito: utente non trovato con ID {UserId}.", id);
+                return NotFound("Utente non trovato.");
             }
 
-            // Trova il cliente associato all'utente tramite UserID
             var customer = await _context.Customers.FirstOrDefaultAsync(c => c.UserID == id);
             if (customer != null)
             {
-                _context.Customers.Remove(customer); // Rimuove il cliente associato
+                _context.Customers.Remove(customer);
+                _logger.LogInformation("Rimosso cliente associato per l'utente {Email}.", user.EmailAddress);
             }
 
-            _authContext.Users.Remove(user); // Rimuove l'utente dal contesto
-            await _authContext.SaveChangesAsync(); // Salva le modifiche nella tabella Users
-            await _context.SaveChangesAsync(); // Salva le modifiche nella tabella Customers
+            _authContext.Users.Remove(user);
+            await _authContext.SaveChangesAsync();
+            await _context.SaveChangesAsync();
 
-            return NoContent(); // Restituisce una risposta vuota di successo
-        }
-
-        // Metodo privato per verificare se l'utente esiste nel database
-        private bool UserExists(int id)
-        {
-            return _authContext.Users.Any(e => e.UserId == id);
-        }
-
-
-
-        [HttpPost("registerGoogleUser")]
-        public async Task<IActionResult> RegisterUser([FromBody] string idTokenString)
-        {
-            try
-            {
-                // Verifica il token ID di Google
-                var payload = await GoogleJsonWebSignature.ValidateAsync(idTokenString, new GoogleJsonWebSignature.ValidationSettings
-                {
-                    Audience = new[] { CLIENT_ID }
-                });
-
-                if (payload != null)
-                {
-                    // Estrai le informazioni dell'utente dal payload
-                    string email = payload.Email;
-                    string firstName = payload.GivenName;
-                    string lastName = payload.FamilyName;
-
-                    // Controlla se l'utente esiste già nel database
-                    var existingUser = await _authContext.Users.FirstOrDefaultAsync(u => u.EmailAddress == email);
-                    if (existingUser != null)
-                    {
-                        return BadRequest("User already exists.");
-                    }
-
-                    // Crea una password hash generata casualmente per l'utente
-                    string password = GenerateRandomPassword(); // Puoi generare una password casuale
-                    var (passwordHash, passwordSalt) = CreatePasswordHash(password);
-
-                    // Crea un nuovo utente
-                    var newUser = new User
-                    {
-                        FirstName = firstName,
-                        MiddleName = "",
-                        LastName = lastName,
-                        Suffix = "",
-                        EmailAddress = email,
-                        Phone = "",
-                        PasswordHash = passwordHash,
-                        PasswordSalt = passwordSalt,
-                        Role = "User", // Assegna il ruolo dell'utente
-                        Rowguid = Guid.NewGuid()// Puoi generare un GUID per l'utente
-                    };
-
-                    // Aggiungi il nuovo utente al database
-                    _authContext.Users.Add(newUser);
-                    await _authContext.SaveChangesAsync();
-
-                    return Ok("User registered successfully.");
-                }
-                else
-                {
-                    return Unauthorized("Invalid ID token.");
-                }
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, $"Internal server error: {ex.Message}");
-            }
-        }
-
-        // Metodo per generare una password casuale
-        private string GenerateRandomPassword()
-        {
-            var random = new Random();
-            var password = Path.GetRandomFileName().Replace(".", ""); // Usa un nome di file come password casuale
-            return password;
-        }
-
-        // Metodo per creare un hash della password
-        private (string passwordHash, string passwordSalt) CreatePasswordHash(string password)
-        {
-            // Usare HMACSHA512 per generare un hash
-            using (var hmac = new HMACSHA512())
-            {
-                // La salt viene estratta dalla chiave segreta di HMAC (10 byte)
-                var passwordSalt = hmac.Key.Take(10).ToArray();  // Limita la salt a 10 byte
-
-                // Crea l'hash della password
-                var passwordHash = hmac.ComputeHash(Encoding.UTF8.GetBytes(password));
-
-                // Converti la salt in Base64 e limita la lunghezza a 10 caratteri
-                var passwordSaltBase64 = Convert.ToBase64String(passwordSalt);
-
-                if (passwordSaltBase64.Length > 10)
-                {
-                    passwordSaltBase64 = passwordSaltBase64.Substring(0, 10);  // Limita la salt a 10 caratteri
-                }
-
-                // Limita l'hash a 128 bit (16 byte) e convertilo in Base64
-                var passwordHashBase64 = Convert.ToBase64String(passwordHash.Take(16).ToArray());
-
-                // Restituisci l'hash e la salt
-                return (passwordHashBase64, passwordSaltBase64);
-            }
+            _logger.LogInformation("Eliminato con successo utente {Email}.", user.EmailAddress);
+            return NoContent();
         }
     }
 }
