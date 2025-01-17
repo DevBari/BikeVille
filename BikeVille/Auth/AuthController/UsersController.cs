@@ -188,15 +188,29 @@ namespace BikeVille.Auth.AuthController
         // POST: api/Users/Add
         // Aggiunge un nuovo utente
         [HttpPost("Add")]
-         public async Task<ActionResult<User>> PostUser([FromBody] UserDto userDto)
+        public async Task<ActionResult<User>> PostUser([FromBody] UserDto userDto)
         {
+            // Verifica se nello stato del modello ci sono eventuali errori
             if (!ModelState.IsValid)
             {
                 return BadRequest(ModelState);
             }
 
+            // 1. Controlla se esiste già un utente con la stessa email
+            var existingUser = await _authContext.Users
+                .FirstOrDefaultAsync(u => u.EmailAddress == userDto.EmailAddress);
+
+            if (existingUser != null)
+            {
+                _logger.LogWarning("Tentativo di creazione fallito: un utente con la mail {Email} esiste già.", userDto.EmailAddress);
+                // 2. Restituisce un 409 Conflict se la mail esiste già
+                return Conflict("Esiste già un utente con questa email.");
+            }
+
+            // 3. Crea l'hash e il salt della password
             var passHashSalt = SaltEncrypt.SaltEncryptPass(userDto.Password);
 
+            // 4. Crea l'oggetto User
             var user = new User()
             {
                 FirstName = userDto.FirstName,
@@ -210,9 +224,12 @@ namespace BikeVille.Auth.AuthController
                 Role = userDto.Role,
                 Rowguid = Guid.NewGuid(),
             };
+
+            // 5. Aggiunge l'utente al database
             _authContext.Users.Add(user);
             await _authContext.SaveChangesAsync();
 
+            // 6. Crea e salva un record in tabella Customers
             var customer = new Customer()
             {
                 NameStyle = true,
@@ -220,8 +237,8 @@ namespace BikeVille.Auth.AuthController
                 MiddleName = userDto.MiddleName,
                 LastName = userDto.LastName,
                 Suffix = userDto.Suffix,
-                EmailAddress = userDto.EmailAddress,
-                Phone = userDto.Phone,
+                EmailAddress = "",
+                Phone = "",
                 PasswordHash = "",
                 PasswordSalt = "",
                 Rowguid = Guid.NewGuid(),
@@ -235,8 +252,6 @@ namespace BikeVille.Auth.AuthController
             _logger.LogInformation("Creato nuovo utente {Email} e relativo cliente.", user.EmailAddress);
             return CreatedAtAction("GetUser", new { id = user.UserId }, user);
         }
-
-
         // DELETE: api/Users/5
         // Elimina un utente specificato dall'ID
         [HttpDelete("Delete/{id}")]

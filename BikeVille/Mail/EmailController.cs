@@ -1,7 +1,6 @@
-﻿using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Mvc;
+﻿using System.Net;
 using System.Net.Mail;
-using System.Net;
+using Microsoft.AspNetCore.Mvc;
 
 namespace AuthJwt.Mail
 {
@@ -14,10 +13,12 @@ namespace AuthJwt.Mail
         {
             try
             {
+                //var smtpClient = new SmtpClient("smtp.mailtrap.io")
                 var smtpClient = new SmtpClient("smtp.gmail.com")
                 {
-                    Port = 465,
-                    Credentials = new NetworkCredential("bikeville.commercial@gmail.com", "BikeVille@Comm30"),
+                    Port = 587,
+                    Credentials = new NetworkCredential("BikeVille.commercial@gmail.com", "othvgfyosjudjjrn"),
+                    // Credentials = new NetworkCredential("9eee65065e91d5", "a9dd17c0e5f652"),
                     EnableSsl = true,
                 };
 
@@ -47,8 +48,8 @@ namespace AuthJwt.Mail
             {
                 var smtpClient = new SmtpClient("smtp.gmail.com")
                 {
-                    Port = 465,
-                    Credentials = new NetworkCredential("bikeville.commercial@gmail.com", "BikeVille@Comm30"),
+                    Port = 587,
+                    Credentials = new NetworkCredential("BikeVille.commercial@gmail.com", "othvgfyosjudjjrn"),
                     EnableSsl = true,
                 };
 
@@ -78,8 +79,8 @@ namespace AuthJwt.Mail
             {
                 var smtpClient = new SmtpClient("smtp.gmail.com")
                 {
-                    Port = 465,
-                    Credentials = new NetworkCredential("bikeville.commercial@gmail.com", "BikeVille@Comm30"),
+                    Port = 587,
+                    Credentials = new NetworkCredential("BikeVille.commercial@gmail.com", "othvgfyosjudjjrn"),
                     EnableSsl = true,
                 };
 
