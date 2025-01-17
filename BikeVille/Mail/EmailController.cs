@@ -14,10 +14,10 @@ namespace AuthJwt.Mail
         {
             try
             {
-                var smtpClient = new SmtpClient("smtp.mailtrap.io")
+                var smtpClient = new SmtpClient("smtp.gmail.com")
                 {
-                    Port = 2525,
-                    Credentials = new NetworkCredential("adc1d4cf235e16", "325f87715bb449"),
+                    Port = 465,
+                    Credentials = new NetworkCredential("bikeville.commercial@gmail.com", "BikeVille@Comm30"),
                     EnableSsl = true,
                 };
 
@@ -45,10 +45,10 @@ namespace AuthJwt.Mail
         {
             try
             {
-                var smtpClient = new SmtpClient("smtp.mailtrap.io")
+                var smtpClient = new SmtpClient("smtp.gmail.com")
                 {
-                    Port = 2525,
-                    Credentials = new NetworkCredential("adc1d4cf235e16", "325f87715bb449"),
+                    Port = 465,
+                    Credentials = new NetworkCredential("bikeville.commercial@gmail.com", "BikeVille@Comm30"),
                     EnableSsl = true,
                 };
 
@@ -76,10 +76,10 @@ namespace AuthJwt.Mail
         {
             try
             {
-                var smtpClient = new SmtpClient("smtp.mailtrap.io")
+                var smtpClient = new SmtpClient("smtp.gmail.com")
                 {
-                    Port = 2525,
-                    Credentials = new NetworkCredential("adc1d4cf235e16", "325f87715bb449"),
+                    Port = 465,
+                    Credentials = new NetworkCredential("bikeville.commercial@gmail.com", "BikeVille@Comm30"),
                     EnableSsl = true,
                 };
 

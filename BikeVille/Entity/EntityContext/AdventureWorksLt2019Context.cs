@@ -1,7 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using BikeVille.Entity;
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 
 namespace BikeVille.Entity.EntityContext;
 
@@ -166,7 +163,7 @@ public partial class AdventureWorksLt2019Context : DbContext
             entity.Property(e => e.Title)
                 .HasMaxLength(8)
                 .HasComment("A courtesy title. For example, Mr. or Ms.");
-
+            entity.Property(e => e.UserID).HasComment("User ID for the person.");
         });
 
         modelBuilder.Entity<CustomerAddress>(entity =>
@@ -551,7 +548,7 @@ public partial class AdventureWorksLt2019Context : DbContext
                 .HasComputedColumnSql("(isnull(([SubTotal]+[TaxAmt])+[Freight],(0)))", false)
                 .HasComment("Total due from customer. Computed as Subtotal + TaxAmt + Freight.")
                 .HasColumnType("money");
-
+            entity.Property(e => e.UserId).HasComment("User ID for the person who created the sales order. ");
             entity.HasOne(d => d.BillToAddress).WithMany(p => p.SalesOrderHeaderBillToAddresses)
                 .HasForeignKey(d => d.BillToAddressId)
                 .HasConstraintName("FK_SalesOrderHeader_Address_BillTo_AddressID");

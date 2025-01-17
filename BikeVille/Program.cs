@@ -67,13 +67,7 @@ namespace BikeVille
 
                 };
             });
-            builder.Services.Configure<GoogleAuthSettings>(options =>
-                {
-                    options.GoogleClientId = "467980910008-a1c9tm4dg1omhet8vckq8t77nr42feea.apps.googleusercontent.com";
-                    options.Issuer = "https://accounts.google.com";
-                    options.Audience = "467980910008-a1c9tm4dg1omhet8vckq8t77nr42feea.apps.googleusercontent.com";
-                });
-
+     
 
 
             //Role

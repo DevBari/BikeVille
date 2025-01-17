@@ -1,19 +1,17 @@
-using Microsoft.Extensions.Logging;
-using BikeVille.Auth.AuthContext;
 using BikeVille.Entity.EntityContext;
 
 
 
 namespace BikeVille.Logging
 {
-/*
+    /*
 
- Queste classi creano un sistema di logging
- personalizzato che intercetta i messaggi di 
- log (ILogger) e li salva nel database tramite la 
- tua tabella (ad esempio, ErrorLog).
+     Queste classi(DatabaseLogger,DatabaseLoggerExtensions,DatabaseLoggerProvider) creano un sistema di logging
+     personalizzato che intercetta i messaggi di 
+     log (ILogger) e li salva nel database tramite la 
+     tua tabella (ad esempio, ErrorLog).
 
-*/
+    */
     public static class DatabaseLoggerExtensions
     {
         public static ILoggingBuilder AddDatabaseLogger(this ILoggingBuilder builder,

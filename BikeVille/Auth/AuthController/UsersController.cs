@@ -12,7 +12,7 @@ using Microsoft.AspNetCore.Cryptography.KeyDerivation;
 using System.Security.Cryptography;
 using BikeVille.CriptingDecripting;
 using System.Text;
-using Google.Apis.Auth;
+
 using BikeVille.Entity;
 
 namespace BikeVille.Auth.AuthController
@@ -25,9 +25,9 @@ namespace BikeVille.Auth.AuthController
         private readonly AdventureWorksLt2019usersInfoContext _authContext;
         private readonly AdventureWorksLt2019Context _context;
         private readonly ILogger<UsersController> _logger;
-        private const string CLIENT_ID = "467980910008-a1c9tm4dg1omhet8vckq8t77nr42feea.apps.googleusercontent.com"; // Inserisci il tuo CLIENT_ID di Google
+       
 
-        // Costruttore che inietta il contesto del database
+        // Costruttore che inietta  entrambi i contesti del database sia user che customer
         public UsersController(AdventureWorksLt2019usersInfoContext authContext, AdventureWorksLt2019Context context, ILogger<UsersController> logger)
         {
             _authContext = authContext;
